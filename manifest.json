@@ -1,0 +1,11 @@
+{
+ "name": "Valley View Trails",
+ "short_name": "Trails",
+ "start_url": ".",
+ "scope": ".",
+ "display": "standalone",
+ "background_color": "#111418",
+ "theme_color": "#111418",
+ "orientation": "portrait",
+ "icons": []
+}

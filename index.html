@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#111418">
+<title>Valley View Trails</title>
+<link rel="manifest" href="manifest.json">
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;overflow:hidden;background:#111418;
+    font:14px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#e8ecf1;
+    -webkit-user-select:none;user-select:none;overscroll-behavior:none}
+  #viewport{position:fixed;inset:0;overflow:hidden;touch-action:none}
+  #layer{position:absolute;top:0;left:0;transform-origin:0 0;will-change:transform}
+  #map{display:block;image-rendering:auto;pointer-events:none}
+  #acc{position:absolute;border-radius:50%;background:rgba(56,132,255,.18);
+    border:1px solid rgba(56,132,255,.45);pointer-events:none;display:none}
+  #dot{position:absolute;width:22px;height:22px;margin:-11px 0 0 -11px;pointer-events:none;display:none}
+  #dot i{position:absolute;inset:0;border-radius:50%;background:#2f7dff;
+    border:3px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.35),0 2px 8px rgba(0,0,0,.5)}
+  #dot b{position:absolute;left:50%;top:50%;width:0;height:0;margin:-30px 0 0 -9px;
+    border-left:9px solid transparent;border-right:9px solid transparent;
+    border-bottom:16px solid #2f7dff;filter:drop-shadow(0 0 1px #fff);display:none}
+  .bar{position:fixed;left:0;right:0;padding:calc(env(safe-area-inset-top) + 8px) 12px 8px;
+    background:linear-gradient(#111418ee,#111418cc,#11141800);z-index:5;
+    display:flex;gap:10px;align-items:center;font-variant-numeric:tabular-nums}
+  .bar #st{flex:1;min-width:0}
+  .bar #st b{display:block;font-size:13px;font-weight:600;white-space:nowrap;
+    overflow:hidden;text-overflow:ellipsis}
+  .bar #st s{display:block;text-decoration:none;font-size:11px;opacity:.62;white-space:nowrap;
+    overflow:hidden;text-overflow:ellipsis}
+  #north{width:34px;height:34px;flex:0 0 auto;border-radius:50%;background:#242a33;
+    display:grid;place-items:center;font-size:10px;font-weight:700;opacity:.9}
+  #north span{display:block;transform:rotate(6.247deg);line-height:1}
+  .ctl{position:fixed;right:12px;bottom:calc(env(safe-area-inset-bottom) + 16px);
+    display:flex;flex-direction:column;gap:10px;z-index:5}
+  .ctl button{width:52px;height:52px;border-radius:26px;border:0;background:#242a33ee;
+    color:#e8ecf1;font-size:20px;font-weight:600;box-shadow:0 4px 14px rgba(0,0,0,.45);
+    display:grid;place-items:center}
+  .ctl button:active{background:#39424f}
+  .ctl button.on{background:#2f7dff;color:#fff}
+  #msg{position:fixed;left:12px;right:12px;bottom:calc(env(safe-area-inset-bottom) + 16px);
+    z-index:6;background:#242a33f2;border-radius:12px;padding:12px 14px;font-size:13px;
+    box-shadow:0 6px 20px rgba(0,0,0,.5);display:none}
+  #msg u{display:block;text-decoration:none;opacity:.7;font-size:12px;margin-top:4px}
+  #cred{position:fixed;left:10px;bottom:calc(env(safe-area-inset-bottom) + 8px);z-index:4;
+    font-size:10px;line-height:1.3;opacity:.5;pointer-events:none;max-width:58%;
+    text-shadow:0 1px 3px #000}
+  #gate{position:fixed;inset:0;z-index:20;background:#12161b;display:grid;
+    place-items:center;padding:26px;text-align:center}
+  #gate.hide{display:none}
+  #gate .box{width:100%;max-width:330px}
+  #gate h1{font-size:19px;margin:0 0 6px;font-weight:650}
+  #gate p{margin:0 0 22px;font-size:13px;opacity:.6}
+  #gate input{width:100%;padding:13px 14px;border-radius:10px;border:1px solid #2c3440;
+    background:#1a1f26;color:#e8ecf1;font-size:16px;text-align:center;
+    font-family:ui-monospace,monospace;letter-spacing:.06em}
+  #gate button{margin-top:12px;width:100%;padding:14px;border:0;border-radius:10px;
+    background:#2f7dff;color:#fff;font-size:16px;font-weight:600}
+  #gate button:disabled{background:#333c49;color:#7e8a99}
+  #gerr{margin-top:14px;font-size:13px;color:#ff9aa4;min-height:18px}
+</style>
+</head>
+<body>
+
+<div id="viewport"><div id="layer">
+  <img id="map" width="1600" height="2071" alt="Valley View Trails map">
+  <div id="acc"></div>
+  <div id="dot"><b></b><i></i></div>
+</div></div>
+
+<div class="bar">
+  <div id="st"><b>Waiting for GPS&hellip;</b><s>Tap &#9678; to start locating</s></div>
+  <div id="north"><span>&#9650;<br>N</span></div>
+</div>
+
+<div class="ctl">
+  <button id="zin"  aria-label="Zoom in">+</button>
+  <button id="zout" aria-label="Zoom out">&minus;</button>
+  <button id="loc"  aria-label="Locate me">&#9678;</button>
+</div>
+
+<div id="msg"></div>
+<div id="cred">Satellite imagery &copy; Google / Airbus</div>
+
+<div id="gate"><div class="box">
+  <h1>Valley View Trails</h1>
+  <p>Enter the passcode to open the map</p>
+  <input type="password" id="gpass" autocomplete="current-password"
+         enterkeyhint="go" placeholder="passcode">
+  <button id="gbtn">Unlock</button>
+  <div id="gerr"></div>
+</div></div>
+
+<script>
+const G = {"lat0": 42.331586111111115, "lon0": -75.36717777777777, "a": 191915.0102914264, "b": 28311.560761207922, "c": 333.5592179527041, "d": 21006.406827276427, "e": -258655.06269251037, "f": 521.72625838987, "w": 1600, "h": 2071, "scale_px_per_m": 2.3424609853301, "rot_deg": -6.246546855462101};
+
+const vp=document.getElementById('viewport'), layer=document.getElementById('layer'),
+      dot=document.getElementById('dot'), arrow=dot.querySelector('b'),
+      acc=document.getElementById('acc'), st=document.getElementById('st'),
+      msg=document.getElementById('msg');
+
+/* ---- geo -> image pixel ---- */
+function llToPx(lat,lon){
+  const dlon=lon-G.lon0, dlat=lat-G.lat0;
+  return [G.a*dlon + G.b*dlat + G.c, G.d*dlon + G.e*dlat + G.f];
+}
+
+/* ---- view state: image point at screen centre + zoom ---- */
+let cx=G.w/2, cy=G.h/2, z=1, minZ=.2, maxZ=8, follow=true, have=false;
+
+function fit(){
+  const s=Math.min(innerWidth/G.w, innerHeight/G.h);
+  minZ=s*0.8; maxZ=s*14;
+  if(!have){ z=s; cx=G.w/2; cy=G.h/2; }
+  render();
+}
+function clamp(){
+  z=Math.max(minZ,Math.min(maxZ,z));
+  const mx=innerWidth/(2*z), my=innerHeight/(2*z);
+  cx=Math.max(-mx*.5, Math.min(G.w+mx*.5, cx));
+  cy=Math.max(-my*.5, Math.min(G.h+my*.5, cy));
+}
+function render(){
+  clamp();
+  layer.style.transform =
+    'translate('+(innerWidth/2)+'px,'+(innerHeight/2)+'px) scale('+z+') translate('+(-cx)+'px,'+(-cy)+'px)';
+  dot.style.transform='scale('+(1/z)+')';
+}
+addEventListener('resize',fit);
+
+/* ---- pan / pinch ---- */
+const pts=new Map(); let last=null;
+vp.addEventListener('pointerdown',e=>{ vp.setPointerCapture(e.pointerId);
+  pts.set(e.pointerId,{x:e.clientX,y:e.clientY}); last=null; });
+vp.addEventListener('pointermove',e=>{
+  if(!pts.has(e.pointerId)) return;
+  pts.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  const a=[...pts.values()];
+  if(a.length===1){
+    if(last){ cx-=(a[0].x-last.x)/z; cy-=(a[0].y-last.y)/z; setFollow(false); render(); }
+    last={x:a[0].x,y:a[0].y};
+  } else if(a.length>=2){
+    const d=Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y),
+          m={x:(a[0].x+a[1].x)/2,y:(a[0].y+a[1].y)/2};
+    if(last&&last.d){
+      const k=d/last.d;
+      const ix=cx+(m.x-innerWidth/2)/z, iy=cy+(m.y-innerHeight/2)/z;
+      z*=k; clamp();
+      cx=ix-(m.x-innerWidth/2)/z; cy=iy-(m.y-innerHeight/2)/z;
+      cx-=(m.x-last.x)/z; cy-=(m.y-last.y)/z;
+      setFollow(false); render();
+    }
+    last={x:m.x,y:m.y,d:d};
+  }
+});
+function up(e){ pts.delete(e.pointerId); last=null; }
+vp.addEventListener('pointerup',up); vp.addEventListener('pointercancel',up);
+vp.addEventListener('wheel',e=>{ e.preventDefault();
+  const ix=cx+(e.clientX-innerWidth/2)/z, iy=cy+(e.clientY-innerHeight/2)/z;
+  z*=Math.exp(-e.deltaY/400); clamp();
+  cx=ix-(e.clientX-innerWidth/2)/z; cy=iy-(e.clientY-innerHeight/2)/z;
+  setFollow(false); render(); },{passive:false});
+
+/* ---- controls ---- */
+const locBtn=document.getElementById('loc');
+function setFollow(v){ follow=v; locBtn.classList.toggle('on',v); }
+document.getElementById('zin').onclick =()=>{ z*=1.6; render(); };
+document.getElementById('zout').onclick=()=>{ z/=1.6; render(); };
+locBtn.onclick=()=>{ setFollow(true); start(); if(fix) centre(); };
+function centre(){ if(!fix) return; const p=llToPx(fix.coords.latitude,fix.coords.longitude);
+  cx=p[0]; cy=p[1]; render(); }
+
+/* ---- geolocation ---- */
+let watch=null, fix=null;
+function show(t,sub){ msg.innerHTML=t+(sub?'<u>'+sub+'</u>':''); msg.style.display='block';
+  clearTimeout(show._t); show._t=setTimeout(()=>msg.style.display='none',7000); }
+
+function start(){
+  if(watch!==null) return;
+  if(!navigator.geolocation){ show('This browser has no GPS support.'); return; }
+  if(!isSecureContext){ show('Location needs a secure (https) page.',
+      'Open this map from its https:// link, not as a local file.'); return; }
+  watch=navigator.geolocation.watchPosition(onFix,onErr,
+    {enableHighAccuracy:true,maximumAge:2000,timeout:20000});
+}
+function onFix(p){
+  fix=p; have=true;
+  const {latitude:la,longitude:lo,accuracy:ac,heading:hd,speed:sp}=p.coords;
+  const q=llToPx(la,lo);
+  dot.style.left=q[0]+'px'; dot.style.top=q[1]+'px'; dot.style.display='block';
+  const r=Math.max(ac,1)*G.scale_px_per_m;
+  acc.style.width=acc.style.height=(r*2)+'px';
+  acc.style.left=(q[0]-r)+'px'; acc.style.top=(q[1]-r)+'px'; acc.style.display='block';
+  if(hd!=null && !isNaN(hd) && sp>0.4){ arrow.style.display='block';
+    arrow.style.transform='rotate('+(hd + G.rot_deg)+'deg)';
+    arrow.style.transformOrigin='9px 41px'; }
+  else arrow.style.display='none';
+  const off = q[0]<0||q[1]<0||q[0]>G.w||q[1]>G.h;
+  st.innerHTML='<b>'+(off?'&#9888;&#65039; Off the map':'&#9679; Located &plusmn;'+Math.round(ac)+' m')+'</b>'+
+    '<s>'+la.toFixed(6)+', '+lo.toFixed(6)+(off?'':' &middot; live')+'</s>';
+  if(follow) centre();
+}
+function onErr(e){
+  const m={1:'Location permission was denied.',2:'Position unavailable — no GPS fix yet.',
+           3:'Timed out waiting for GPS.'}[e.code]||e.message;
+  st.innerHTML='<b>&#9888;&#65039; No fix</b><s>'+m+'</s>';
+  if(e.code===1) show('Location permission denied.',
+     'Settings &rsaquo; Safari &rsaquo; Location, or the &#65informationSign; in the address bar.');
+}
+
+/* keep the screen awake while walking */
+let wl=null;
+async function wake(){ try{ if('wakeLock' in navigator && !wl){ wl=await navigator.wakeLock.request('screen');
+  wl.addEventListener('release',()=>wl=null);} }catch(e){} }
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible') wake(); });
+
+/* ---- encrypted map: AES-256-GCM, key = PBKDF2-SHA256(passcode) ---- */
+const img=document.getElementById('map'), gate=document.getElementById('gate'),
+      gpass=document.getElementById('gpass'), gbtn=document.getElementById('gbtn'),
+      gerr=document.getElementById('gerr');
+const KEYSTORE='vvtrails.pass';
+let blobBytes=null;
+
+async function fetchBlob(){
+  if(blobBytes) return blobBytes;
+  const r=await fetch('map.enc',{cache:'force-cache'});
+  if(!r.ok) throw new Error('could not load map data ('+r.status+')');
+  blobBytes=new Uint8Array(await r.arrayBuffer());
+  return blobBytes;
+}
+async function decrypt(pass){
+  const buf=await fetchBlob();
+  if(buf.length<41 || new TextDecoder().decode(buf.slice(0,8))!=='VVTENC01')
+    throw new Error('map data is not in the expected format');
+  const iter=new DataView(buf.buffer,buf.byteOffset).getUint32(8,false);
+  const salt=buf.slice(12,28), iv=buf.slice(28,40), ct=buf.slice(40);
+  const base=await crypto.subtle.importKey('raw',new TextEncoder().encode(pass),'PBKDF2',false,['deriveKey']);
+  const key=await crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:iter,hash:'SHA-256'},
+      base,{name:'AES-GCM',length:256},false,['decrypt']);
+  const plain=await crypto.subtle.decrypt({name:'AES-GCM',iv},key,ct);   // throws if wrong
+  return URL.createObjectURL(new Blob([plain],{type:'image/jpeg'}));
+}
+function boot(){
+  gate.classList.add('hide');
+  if(img.complete && img.naturalWidth) fit(); else img.onload=fit;
+  setFollow(true); start(); wake();
+}
+async function unlock(pass,remember){
+  gerr.textContent=''; gbtn.disabled=true; gbtn.textContent='Unlocking…';
+  try{
+    img.src=await decrypt(pass);
+    if(remember) try{ localStorage.setItem(KEYSTORE,pass); }catch(e){}
+    boot();
+  }catch(e){
+    try{ localStorage.removeItem(KEYSTORE); }catch(_){}
+    gerr.textContent = /format|load/.test(e.message) ? e.message : 'Wrong passcode.';
+    gpass.value=''; gpass.focus();
+  }finally{ gbtn.disabled=false; gbtn.textContent='Unlock'; }
+}
+gbtn.onclick=()=>{ if(gpass.value) unlock(gpass.value,true); };
+gpass.addEventListener('keydown',e=>{ if(e.key==='Enter'&&gpass.value) unlock(gpass.value,true); });
+
+if(!isSecureContext || !crypto.subtle){
+  gerr.textContent='This page must be opened over https:// to decrypt the map.';
+}else{
+  let saved=null; try{ saved=localStorage.getItem(KEYSTORE); }catch(e){}
+  if(saved) unlock(saved,false); else gpass.focus();
+}
+if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>
