@@ -26,12 +26,16 @@ The verdict is the worst of these; the note under the light explains the worst o
 |---|---|---|
 | Condensation | gear within 4 °F of dew point | gear below dew point |
 | Lightning | — | thunderstorm codes 95/96/99 |
-| Rain, fully sealed | 45 % in 3 hr | 75 %, or raining now |
-| Rain, sealed body + bare lens | 25 % | 55 %, or raining now |
-| Rain, unsealed | 15 % | 40 %, or raining now |
+| Rain, both sealed | 45 % in 3 hr | 75 %, or raining now |
+| Rain, one of the two sealed | 25 % | 55 %, or raining now |
+| Rain, neither sealed | 15 % | 40 %, or raining now |
 | Wind | gusts ≥ 20 mph — no lens changes outdoors | gusts ≥ 35 mph |
 | Heat | ≥ 95 °F in open sun — video thermal limits | — |
 | Cold | ≤ 25 °F — battery life halves | — |
+
+Body and lens are picked separately, and the rain row follows the weakest of the
+two — a sealed body behind a bare lens is still a bare lens, so the four
+combinations collapse to the three tiers above.
 
 Only condensation causes permanent damage; the rest are inconvenience or risk to
 the shot. Weather sealing does nothing against condensation, so that row ignores

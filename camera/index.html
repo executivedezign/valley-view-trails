@@ -85,6 +85,7 @@
     font-variant-numeric:tabular-nums;-webkit-user-select:text;user-select:text}
   .row input:focus{outline:none;border-color:#2f7dff}
   .hint{font-size:11.5px;opacity:.5;margin:9px 0 0;line-height:1.4}
+  .sub{font-size:12px;opacity:.62;margin:12px 0 6px}
   #settings{display:none} #settings.open{display:block}
 
   #home b{display:block;font-size:14px;font-weight:600;margin-bottom:4px}
@@ -126,13 +127,17 @@
   </div>
   <p class="hint" id="storeHint"></p>
   <h2 style="margin-top:18px">Weather sealing</h2>
-  <div class="seg" id="sealSeg">
-    <button data-k="sealed">Fully sealed</button>
-    <button data-k="mixed">Sealed body,<br>bare lens</button>
-    <button data-k="none">Not sealed</button>
+  <p class="sub">Camera body</p>
+  <div class="seg" id="bodySeg">
+    <button data-k="1">Sealed</button>
+    <button data-k="0">Not sealed</button>
   </div>
-  <p class="hint">Thresholds follow the weakest item in the bag. Sealing does nothing against
-    condensation &mdash; that one is decided by dew point alone.</p>
+  <p class="sub">Lens</p>
+  <div class="seg" id="lensSeg">
+    <button data-k="1">Sealed</button>
+    <button data-k="0">Not sealed</button>
+  </div>
+  <p class="hint" id="sealHint"></p>
 </div>
 
 <div class="card">
@@ -183,10 +188,18 @@ const LVL=['green','amber','red'];
 
 /* ---- settings, remembered on the device ---- */
 const SKEY='camwx.settings';
-const DEF={store:'house', seal:'mixed', gearTemp:70, manual:false};
+const DEF={store:'house', body:1, lens:0, gearTemp:70, manual:false};
 let S=Object.assign({},DEF);
 try{ Object.assign(S, JSON.parse(localStorage.getItem(SKEY)||'{}')); }catch(e){}
 function saveS(){ try{ localStorage.setItem(SKEY,JSON.stringify(S)); }catch(e){} }
+
+/* Body and lens are picked separately, but rain thresholds follow the weakest
+   item in the bag — a sealed body behind a bare lens is still a bare lens. */
+function sealLevel(){ return S.body&&S.lens ? 'sealed' : (S.body||S.lens ? 'mixed' : 'none'); }
+const SEAL_HINT={
+  sealed:'Both sealed, so rain thresholds are loose. Sealing still does nothing against condensation — that is decided by dew point alone.',
+  mixed:'One of the two is exposed, so thresholds follow that item. Sealing does nothing against condensation either way.',
+  none:'Nothing sealed, so any precipitation reads as a stop. Condensation is judged separately, on dew point alone.'};
 
 /* Where the gear has been sitting decides its starting temperature, and that
    single number drives the condensation answer. The house is a fixed setpoint;
@@ -272,9 +285,9 @@ function assess(w, gearTemp){
     R.push({l:RED, t:'Thunderstorms in the area.', k:'Nothing on a tripod in the open, and nothing worth the risk to you.'});
 
   /* 3. Rain, weighted by how sealed the weakest item is. */
-  const [ra,rr]=SEAL_RAIN[S.seal];
+  const sl=sealLevel(), [ra,rr]=SEAL_RAIN[sl];
   const p=Math.max(w.prob||0, w.prob3||0);
-  if(w.precip>0 && S.seal!=='sealed')
+  if(w.precip>0 && sl!=='sealed')
     R.push({l:RED, t:'It is raining now and your kit is not fully sealed.', k:'A bag cover or a different day.'});
   else if(w.precip>0)
     R.push({l:AMBER, t:'Raining now, but your kit is sealed for it.', k:'Dry the mount before you swap anything.'});
@@ -439,14 +452,17 @@ try{ const c=JSON.parse(localStorage.getItem('camwx.last')||'null'); if(c){ W=c;
 /* ---- settings wiring ---- */
 function syncSeg(){
   $$('#storeSeg button').forEach(b=>b.classList.toggle('on',b.dataset.k===S.store));
-  $$('#sealSeg button').forEach(b=>b.classList.toggle('on',b.dataset.k===S.seal));
+  $$('#bodySeg button').forEach(b=>b.classList.toggle('on',+b.dataset.k===+S.body));
+  $$('#lensSeg button').forEach(b=>b.classList.toggle('on',+b.dataset.k===+S.lens));
   $('#storeHint').innerHTML=STORE_HINT[S.store];
+  $('#sealHint').innerHTML=SEAL_HINT[sealLevel()];
 }
 $$('#storeSeg button').forEach(b=>b.onclick=()=>{
   S.store=b.dataset.k; S.manual=false;                /* a new pick re-estimates */
   syncSeg(); saveS(); paint();
 });
-$$('#sealSeg button').forEach(b=>b.onclick=()=>{ S.seal=b.dataset.k; syncSeg(); saveS(); paint(); });
+$$('#bodySeg button').forEach(b=>b.onclick=()=>{ S.body=+b.dataset.k; syncSeg(); saveS(); paint(); });
+$$('#lensSeg button').forEach(b=>b.onclick=()=>{ S.lens=+b.dataset.k; syncSeg(); saveS(); paint(); });
 $('#gearTemp').addEventListener('input',()=>{
   const v=parseFloat($('#gearTemp').value);
   if(!isNaN(v)){ S.gearTemp=v; S.manual=true; saveS(); paint(); }
