@@ -1,0 +1,464 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#111418">
+<title>Camera Weather</title>
+<link rel="manifest" href="manifest.json">
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;min-height:100%;background:#111418;
+    font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#e8ecf1;
+    -webkit-user-select:none;user-select:none;overscroll-behavior-y:contain}
+  body{padding:calc(env(safe-area-inset-top) + 12px) 14px calc(env(safe-area-inset-bottom) + 24px);
+    max-width:560px;margin:0 auto}
+
+  header{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+  header h1{flex:1;min-width:0;font-size:15px;font-weight:650;margin:0}
+  header h1 s{display:block;text-decoration:none;font-size:11px;opacity:.55;font-weight:400;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .icon{width:36px;height:36px;flex:0 0 auto;border-radius:18px;border:0;background:#242a33;
+    color:#e8ecf1;font-size:16px;display:grid;place-items:center}
+  .icon:active{background:#39424f}
+  .icon.spin{animation:sp 1s linear infinite}
+  @keyframes sp{to{transform:rotate(360deg)}}
+
+  .card{background:#1a1f26;border:1px solid #252c36;border-radius:14px;padding:14px;margin-bottom:12px}
+  .card h2{font-size:11px;letter-spacing:.09em;text-transform:uppercase;opacity:.5;
+    margin:0 0 10px;font-weight:600}
+
+  /* ---- traffic light ---- */
+  #verdict{display:flex;gap:14px;align-items:center}
+  #light{flex:0 0 auto;width:52px;padding:8px 0;border-radius:16px;background:#0d1014;
+    border:1px solid #252c36;display:grid;gap:8px;justify-items:center}
+  #light i{width:28px;height:28px;border-radius:50%;background:#20262e;display:block;
+    transition:background .25s,box-shadow .25s}
+  #light.red    i:nth-child(1){background:#ff4d5e;box-shadow:0 0 16px #ff4d5eaa}
+  #light.amber  i:nth-child(2){background:#f5a524;box-shadow:0 0 16px #f5a524aa}
+  #light.green  i:nth-child(3){background:#34c76a;box-shadow:0 0 16px #34c76aaa}
+  #vtext{flex:1;min-width:0}
+  #vtext b{display:block;font-size:21px;font-weight:680;letter-spacing:-.01em;line-height:1.15}
+  #vtext p{margin:7px 0 0;font-size:13px;opacity:.82}
+  .red #vtext b{color:#ff8e99} .amber #vtext b{color:#ffc464} .green #vtext b{color:#5fdc93}
+
+  ul.why{list-style:none;margin:12px 0 0;padding:11px 0 0;border-top:1px solid #252c36;
+    font-size:12.5px;display:grid;gap:7px}
+  ul.why li{display:flex;gap:8px;align-items:flex-start;opacity:.9}
+  ul.why li em{flex:0 0 auto;font-style:normal;width:8px;height:8px;border-radius:50%;margin-top:5px}
+  ul.why li.l0 em{background:#34c76a} ul.why li.l1 em{background:#f5a524} ul.why li.l2 em{background:#ff4d5e}
+
+  /* ---- hourly strip ---- */
+  #strip{display:flex;gap:4px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none;
+    -webkit-overflow-scrolling:touch}
+  #strip::-webkit-scrollbar{display:none}
+  #strip .h{flex:0 0 auto;width:38px;text-align:center;border-radius:9px;padding:6px 0 5px;
+    background:#0d1014;border:1px solid transparent;font-variant-numeric:tabular-nums}
+  #strip .h.sel{border-color:#4d5a6b;background:#232a34}
+  #strip .h u{display:block;text-decoration:none;font-size:10px;opacity:.55;margin-bottom:5px}
+  #strip .h em{display:block;height:22px;border-radius:5px;margin:0 6px}
+  #strip .h.l0 em{background:#34c76a} #strip .h.l1 em{background:#f5a524} #strip .h.l2 em{background:#ff4d5e}
+  #strip .h s{display:block;text-decoration:none;font-size:10.5px;opacity:.75;margin-top:5px}
+  #hdet{margin-top:11px;padding-top:10px;border-top:1px solid #252c36;font-size:12.5px;
+    min-height:34px;opacity:.85}
+  #hdet b{color:#e8ecf1;font-weight:600}
+
+  /* ---- metric grid ---- */
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:#252c36;
+    border-radius:10px;overflow:hidden}
+  .grid div{background:#1a1f26;padding:9px 10px}
+  .grid u{display:block;text-decoration:none;font-size:10px;opacity:.5;margin-bottom:3px}
+  .grid b{font-size:15px;font-weight:600;font-variant-numeric:tabular-nums}
+  .grid b i{font-style:normal;font-size:11px;opacity:.55;font-weight:400}
+
+  /* ---- settings ---- */
+  .seg{display:flex;gap:6px;margin-bottom:10px}
+  .seg button{flex:1;padding:9px 4px;border:1px solid #2c3440;border-radius:9px;background:#151a20;
+    color:#9fadbd;font-size:12px;font-weight:550;line-height:1.25}
+  .seg button.on{background:#2f7dff;border-color:#2f7dff;color:#fff}
+  .row{display:flex;align-items:center;gap:10px;margin-top:12px}
+  .row label{flex:1;font-size:12.5px;opacity:.75}
+  .row input{width:96px;padding:9px 10px;border-radius:9px;border:1px solid #2c3440;
+    background:#151a20;color:#e8ecf1;font-size:16px;text-align:center;
+    font-variant-numeric:tabular-nums;-webkit-user-select:text;user-select:text}
+  .row input:focus{outline:none;border-color:#2f7dff}
+  .hint{font-size:11.5px;opacity:.5;margin:9px 0 0;line-height:1.4}
+  #settings{display:none} #settings.open{display:block}
+
+  #home b{display:block;font-size:14px;font-weight:600;margin-bottom:4px}
+  #home p{margin:0;font-size:12.5px;opacity:.8}
+  #home.warn{border-color:#5a4620;background:#20191063}
+  #home.warn b{color:#ffc464}
+
+  #err{display:none;background:#2a1a1e;border-color:#5a2a33;font-size:13px}
+  #err.show{display:block}
+  #err button{margin-top:10px;padding:9px 16px;border:0;border-radius:9px;background:#2f7dff;
+    color:#fff;font-size:14px;font-weight:600}
+  .skel{opacity:.35}
+  footer{font-size:10.5px;opacity:.4;text-align:center;margin-top:16px;line-height:1.5}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Camera Weather<s id="place">Locating&hellip;</s></h1>
+  <button class="icon" id="gear" aria-label="Settings">&#9881;</button>
+  <button class="icon" id="refresh" aria-label="Refresh">&#8635;</button>
+</header>
+
+<div class="card" id="err">
+  <b id="errmsg">Something went wrong.</b>
+  <button id="retry">Try again</button>
+</div>
+
+<div class="card" id="settings">
+  <h2>Where the gear has been sitting</h2>
+  <div class="seg" id="storeSeg">
+    <button data-k="house">In the house</button>
+    <button data-k="garage">Garage / shed</button>
+    <button data-k="car">Car trunk</button>
+  </div>
+  <div class="row">
+    <label>Gear temperature &mdash; estimated from your pick, type over it to set it exactly</label>
+    <input type="number" id="gearTemp" inputmode="decimal" step="1">
+  </div>
+  <p class="hint" id="storeHint"></p>
+  <h2 style="margin-top:18px">Weather sealing</h2>
+  <div class="seg" id="sealSeg">
+    <button data-k="sealed">Fully sealed</button>
+    <button data-k="mixed">Sealed body,<br>bare lens</button>
+    <button data-k="none">Not sealed</button>
+  </div>
+  <p class="hint">Thresholds follow the weakest item in the bag. Sealing does nothing against
+    condensation &mdash; that one is decided by dew point alone.</p>
+</div>
+
+<div class="card">
+  <div id="verdict" class="skel">
+    <div id="light"><i></i><i></i><i></i></div>
+    <div id="vtext"><b>Checking&hellip;</b><p>Getting your location and the local dew point.</p></div>
+  </div>
+  <ul class="why" id="why" hidden></ul>
+</div>
+
+<div class="card" id="home" hidden>
+  <h2>Coming back inside</h2>
+  <b id="homeTitle"></b>
+  <p id="homeNote"></p>
+</div>
+
+<div class="card">
+  <h2>Next 24 hours</h2>
+  <div id="strip"></div>
+  <div id="hdet"></div>
+</div>
+
+<div class="card">
+  <h2>Conditions now</h2>
+  <div class="grid" id="metrics">
+    <div><u>Temp</u><b>&mdash;</b></div><div><u>Dew point</u><b>&mdash;</b></div>
+    <div><u>Humidity</u><b>&mdash;</b></div><div><u>Wind</u><b>&mdash;</b></div>
+    <div><u>Rain</u><b>&mdash;</b></div><div><u>Cloud</u><b>&mdash;</b></div>
+  </div>
+</div>
+
+<footer>Weather by Open&#8209;Meteo &middot; location stays on your phone<br><span id="stamp"></span></footer>
+
+<script>
+/* ============================================================
+   Camera Weather — is it safe to take the camera and lenses out?
+
+   The whole verdict hangs off dew point, not temperature or humidity.
+   Water condenses on any surface colder than the surrounding air's dew
+   point, so the question is never "is it humid" — it is "is my gear
+   colder than the dew point where I'm standing". Everything else
+   (rain, dust, heat, cold) is a modifier on top of that.
+   ============================================================ */
+
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const GREEN=0, AMBER=1, RED=2;
+const LVL=['green','amber','red'];
+
+/* ---- settings, remembered on the device ---- */
+const SKEY='camwx.settings';
+const DEF={store:'house', seal:'mixed', gearTemp:70, manual:false};
+let S=Object.assign({},DEF);
+try{ Object.assign(S, JSON.parse(localStorage.getItem(SKEY)||'{}')); }catch(e){}
+function saveS(){ try{ localStorage.setItem(SKEY,JSON.stringify(S)); }catch(e){} }
+
+/* Where the gear has been sitting decides its starting temperature, and that
+   single number drives the condensation answer. The house is a fixed setpoint;
+   the other two track outdoors, so they are estimated from the live reading and
+   can be typed over. */
+function estGearTemp(w){
+  if(!w) return S.gearTemp;
+  const t=w.temp, sun=w.isDay && w.cloud<50;
+  if(S.store==='house')  return 70;
+  /* Unheated space lags outdoors and stays nearer the ground temperature. */
+  if(S.store==='garage') return Math.round(t + (58-t)*0.45);
+  /* A closed car bakes in sun and roughly tracks air temperature after dark. */
+  if(S.store==='car')    return Math.round(w.isDay ? t + (sun?26:9) : t + 2);
+  return S.gearTemp;
+}
+const STORE_HINT={
+  house:'Fixed at 70&deg;F. Gear leaving a warm house is the classic summer fogging case &mdash; and the classic winter problem on the way back in.',
+  garage:'Estimated from the current outdoor temperature. Gear stored near ambient rarely fogs going out, which is why photographers keep bags in the garage.',
+  car:'Estimated from outdoor temperature, sun and time of day. A closed trunk in sun runs far hotter than the air, so this is the least predictable option &mdash; type the real number if you have a thermometer.'
+};
+
+/* ---- weather ---- */
+const API='https://api.open-meteo.com/v1/forecast';
+const CUR=['temperature_2m','relative_humidity_2m','dew_point_2m','apparent_temperature',
+           'precipitation','weather_code','cloud_cover','wind_speed_10m','wind_gusts_10m','is_day'];
+const HRLY=['temperature_2m','dew_point_2m','precipitation_probability','weather_code',
+            'cloud_cover','wind_gusts_10m','is_day'];
+
+async function getWeather(lat,lon){
+  const q=new URLSearchParams({latitude:lat.toFixed(3), longitude:lon.toFixed(3),
+    current:CUR.join(','), hourly:HRLY.join(','), forecast_days:'2',
+    temperature_unit:'fahrenheit', wind_speed_unit:'mph', precipitation_unit:'inch',
+    timezone:'auto'});
+  const r=await fetch(API+'?'+q);
+  if(!r.ok) throw new Error('weather service returned '+r.status);
+  const j=await r.json();
+  const c=j.current, h=j.hourly;
+  const dp=v=>v==null?null:v;
+  const now={
+    temp:c.temperature_2m, dew:dp(c.dew_point_2m ?? c.dewpoint_2m), rh:c.relative_humidity_2m,
+    feels:c.apparent_temperature, precip:c.precipitation, code:c.weather_code,
+    cloud:c.cloud_cover, wind:c.wind_speed_10m, gust:c.wind_gusts_10m, isDay:!!c.is_day,
+    time:c.time
+  };
+  /* Line the hourly series up with the current hour, then keep 24 forward. */
+  const key=(c.time||'').slice(0,13);
+  let i=h.time.findIndex(t=>t.slice(0,13)===key); if(i<0) i=0;
+  const hours=[];
+  for(let k=i;k<Math.min(i+24,h.time.length);k++){
+    hours.push({time:h.time[k], temp:h.temperature_2m[k],
+      dew:(h.dew_point_2m||h.dewpoint_2m)[k], prob:h.precipitation_probability[k],
+      code:h.weather_code[k], cloud:h.cloud_cover[k], gust:h.wind_gusts_10m[k],
+      isDay:!!h.is_day[k], precip:0});
+  }
+  now.prob = hours.length ? hours[0].prob : 0;
+  /* Rain inside the next three hours matters as much as rain right now. */
+  now.prob3 = Math.max(...hours.slice(0,3).map(x=>x.prob||0), 0);
+  return {now, hours, tz:j.timezone};
+}
+
+/* ---- the rules ---- */
+const SEAL_RAIN={sealed:[45,75], mixed:[25,55], none:[15,40]};   /* [amber, red] % */
+const STORMY=new Set([95,96,99]);
+
+/* Every risk returns a level and the sentence that explains it. The verdict is
+   the worst of them; the note shown up top is the worst one's sentence. */
+function assess(w, gearTemp){
+  const R=[];
+  const margin = gearTemp - w.dew;
+
+  /* 1. Condensation. The only risk here that damages glass permanently. */
+  if(margin < 0)
+    R.push({l:RED, t:'Gear is '+Math.abs(Math.round(margin))+'&deg; colder than the dew point &mdash; it will fog the moment it is uncovered.',
+            k:'Let it warm up indoors first, or seal it in a bag until it is above '+Math.round(w.dew)+'&deg;.'});
+  else if(margin < 4)
+    R.push({l:AMBER, t:'Gear is only '+Math.round(margin)+'&deg; above the dew point &mdash; front elements may mist over.',
+            k:'Give it ten minutes in the shade to settle, and keep a cloth handy.'});
+  else
+    R.push({l:GREEN, t:'Gear sits '+Math.round(margin)+'&deg; above the dew point &mdash; no condensation outside.'});
+
+  /* 2. Lightning. Stops being about the camera. */
+  if(STORMY.has(w.code))
+    R.push({l:RED, t:'Thunderstorms in the area.', k:'Nothing on a tripod in the open, and nothing worth the risk to you.'});
+
+  /* 3. Rain, weighted by how sealed the weakest item is. */
+  const [ra,rr]=SEAL_RAIN[S.seal];
+  const p=Math.max(w.prob||0, w.prob3||0);
+  if(w.precip>0 && S.seal!=='sealed')
+    R.push({l:RED, t:'It is raining now and your kit is not fully sealed.', k:'A bag cover or a different day.'});
+  else if(w.precip>0)
+    R.push({l:AMBER, t:'Raining now, but your kit is sealed for it.', k:'Dry the mount before you swap anything.'});
+  else if(p>=rr)
+    R.push({l:RED, t:p+'% chance of rain within three hours.', k:'Too likely to get caught out with this kit.'});
+  else if(p>=ra)
+    R.push({l:AMBER, t:p+'% chance of rain within three hours.', k:'Worth carrying a cover.'});
+
+  /* 4. Wind. Not about the camera getting wet — about what blows onto the sensor. */
+  if(w.gust>=35)
+    R.push({l:RED, t:'Gusts to '+Math.round(w.gust)+' mph.', k:'Blown grit and an unsteady tripod. Do not open the body outdoors.'});
+  else if(w.gust>=20)
+    R.push({l:AMBER, t:'Gusts to '+Math.round(w.gust)+' mph.', k:'Fine to shoot, but change lenses in the car, not in the open.'});
+
+  /* 5. Heat and cold. Batteries and sensor noise, not damage. */
+  if(w.temp>=95 && w.isDay && w.cloud<60)
+    R.push({l:AMBER, t:Math.round(w.temp)+'&deg; in open sun.', k:'Video will hit thermal limits; keep the body shaded between takes.'});
+  else if(w.temp<=10)
+    R.push({l:AMBER, t:'Only '+Math.round(w.temp)+'&deg; out.', k:'Batteries will fall over fast &mdash; carry spares against your body.'});
+  else if(w.temp<=25)
+    R.push({l:AMBER, t:Math.round(w.temp)+'&deg; will cut battery life roughly in half.', k:'Bring a spare and keep it warm in a pocket.'});
+
+  const worst=R.reduce((m,x)=>Math.max(m,x.l),GREEN);
+  const lead=R.find(x=>x.l===worst);
+  return {level:worst, reasons:R, lead};
+}
+
+/* Going out is usually the safe direction. The damage happens on the way back
+   in, when cold gear meets warm indoor air and water condenses inside the lens
+   barrel where no cloth reaches. Indoor dew point is estimated: heating season
+   runs dry, cooling season tracks outdoors but is capped by the air handler. */
+function homecoming(w){
+  const indoorT=70;
+  const indoorDew = w.temp>=65 ? Math.min(w.dew, 58) : 45;
+  const soak=w.temp;                       /* gear ends the outing at ambient */
+  if(soak >= indoorDew+2)
+    return {warn:false, title:'Safe to walk straight in',
+      note:'Your gear will come home at about '+Math.round(soak)+'&deg;, above the '+
+           Math.round(indoorDew)+'&deg; dew point indoors. Nothing will condense on it.'};
+  const dT=Math.max(indoorT-soak,1);
+  const mins=Math.min(180, Math.max(20, Math.round(dT*3/5)*5));
+  return {warn:true, title:'Bag it before you come inside',
+    note:'Gear will come home near '+Math.round(soak)+'&deg;, below the '+Math.round(indoorDew)+
+         '&deg; dew point in a heated house &mdash; moisture will condense inside the barrel, not just on the front. '+
+         'Seal it in a bag <b>while you are still outside</b> and leave it closed about '+mins+
+         ' minutes so it warms with the outdoor air trapped around it.'};
+}
+
+/* ---- rendering ---- */
+const WX={0:'Clear',1:'Mostly clear',2:'Partly cloudy',3:'Overcast',45:'Fog',48:'Rime fog',
+  51:'Light drizzle',53:'Drizzle',55:'Heavy drizzle',56:'Freezing drizzle',57:'Freezing drizzle',
+  61:'Light rain',63:'Rain',65:'Heavy rain',66:'Freezing rain',67:'Freezing rain',
+  71:'Light snow',73:'Snow',75:'Heavy snow',77:'Snow grains',80:'Showers',81:'Showers',
+  82:'Heavy showers',85:'Snow showers',86:'Snow showers',95:'Thunderstorm',
+  96:'Thunderstorm, hail',99:'Thunderstorm, hail'};
+const VERDICT=[['Take it out','Conditions are clear for the gear.'],
+               ['Take it, but&hellip;',''],['Leave it inside','']];
+
+let W=null, sel=0;
+
+function paint(){
+  if(!W) return;
+  const w=W.now, gt=S.manual ? S.gearTemp : estGearTemp(w);
+  if(!S.manual){ S.gearTemp=gt; $('#gearTemp').value=gt; }
+
+  const a=assess(w,gt);
+  $('#verdict').classList.remove('skel','green','amber','red');
+  $('#verdict').classList.add(LVL[a.level]);
+  $('#light').className=LVL[a.level];
+  $('#vtext').innerHTML='<b>'+VERDICT[a.level][0]+'</b><p>'+
+    (a.level===GREEN?VERDICT[0][1]:a.lead.t+' '+(a.lead.k||''))+'</p>';
+
+  const why=$('#why'); why.hidden=false;
+  why.innerHTML=a.reasons.map(r=>'<li class="l'+r.l+'"><em></em><span>'+r.t+
+    (r.k&&r.l!==a.level?' '+r.k:'')+'</span></li>').join('');
+
+  const hc=homecoming(w);
+  $('#home').hidden=false; $('#home').classList.toggle('warn',hc.warn);
+  $('#homeTitle').innerHTML=hc.title; $('#homeNote').innerHTML=hc.note;
+
+  $('#metrics').innerHTML=[
+    ['Temp',Math.round(w.temp)+'&deg;','feels '+Math.round(w.feels)+'&deg;'],
+    ['Dew point',Math.round(w.dew)+'&deg;', gt-w.dew<4?'gear '+Math.round(gt)+'&deg;':''],
+    ['Humidity',Math.round(w.rh)+'%',''],
+    ['Wind',Math.round(w.wind)+'','mph g'+Math.round(w.gust)],
+    ['Rain',(w.prob3||0)+'%','3 hr'],
+    ['Sky',Math.round(w.cloud)+'%',WX[w.code]||'']
+  ].map(([u,b,i])=>'<div><u>'+u+'</u><b>'+b+(i?' <i>'+i+'</i>':'')+'</b></div>').join('');
+
+  /* Hourly strip: the same rules run against each future hour, with the gear
+     still leaving at its stored temperature. Green means take it then. */
+  const strip=$('#strip'); strip.innerHTML='';
+  W.hours.forEach((h,n)=>{
+    const hw={...h, rh:0, feels:h.temp, wind:h.gust, prob3:h.prob, precip:0};
+    const lv=assess(hw,gt).level;
+    const d=new Date(h.time);
+    const hr=d.getHours(), lbl=n===0?'now':((hr%12||12)+(hr<12?'a':'p'));
+    const el=document.createElement('div');
+    el.className='h l'+lv+(n===sel?' sel':'');
+    el.innerHTML='<u>'+lbl+'</u><em></em><s>'+Math.round(h.temp)+'&deg;</s>';
+    el.onclick=()=>{ sel=n; paint(); };
+    strip.appendChild(el);
+  });
+
+  const h=W.hours[sel]||W.hours[0];
+  if(h){
+    const hw={...h, rh:0, feels:h.temp, wind:h.gust, prob3:h.prob, precip:0};
+    const ha=assess(hw,gt);
+    const d=new Date(h.time), hr=d.getHours();
+    $('#hdet').innerHTML='<b>'+(sel===0?'Right now':((hr%12||12)+(hr<12?' AM':' PM')))+'</b> &middot; '+
+      Math.round(h.temp)+'&deg;, dew point '+Math.round(h.dew)+'&deg;, '+
+      (WX[h.code]||'').toLowerCase()+', '+(h.prob||0)+'% rain.<br>'+ha.lead.t;
+  }
+
+  const t=new Date(w.time);
+  $('#stamp').textContent='Reading from '+t.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'});
+}
+
+/* ---- location, then weather ---- */
+function fail(m){ $('#err').classList.add('show'); $('#errmsg').innerHTML=m; }
+function busy(v){ $('#refresh').classList.toggle('spin',v); }
+
+async function place(lat,lon){
+  try{
+    const r=await fetch('https://api.bigdatacloud.net/data/reverse-geocode-client?latitude='+
+      lat+'&longitude='+lon+'&localityLanguage=en');
+    const j=await r.json();
+    const n=[j.locality||j.city, j.principalSubdivisionCode? j.principalSubdivisionCode.split('-').pop():'']
+      .filter(Boolean).join(', ');
+    if(n) $('#place').textContent=n;
+  }catch(e){ /* a name is a nicety; coordinates already showed */ }
+}
+
+function load(){
+  $('#err').classList.remove('show'); busy(true);
+  if(!navigator.geolocation){ busy(false); return fail('This browser has no location support.'); }
+  if(!isSecureContext){ busy(false); return fail('Location needs an https:// page.'); }
+  /* Weather grids are kilometres wide, so a coarse fix is plenty — and it
+     returns far faster and costs much less battery than a GPS lock. */
+  navigator.geolocation.getCurrentPosition(async p=>{
+    const {latitude:la, longitude:lo}=p.coords;
+    $('#place').textContent=la.toFixed(3)+', '+lo.toFixed(3);
+    place(la,lo);
+    try{
+      W=await getWeather(la,lo);
+      try{ localStorage.setItem('camwx.last',JSON.stringify(W)); }catch(e){}
+      paint();
+    }catch(e){
+      fail('Could not reach the weather service. '+e.message+'<br>This app needs a connection &mdash; unlike the trail map, the data cannot be carried offline.');
+    }finally{ busy(false); }
+  }, e=>{
+    busy(false);
+    fail({1:'Location permission was denied. Settings &rsaquo; Safari &rsaquo; Location.',
+          2:'Position unavailable right now.',3:'Timed out waiting for a location.'}[e.code]||e.message);
+  }, {enableHighAccuracy:false, timeout:15000, maximumAge:300000});
+}
+
+/* Show the last reading immediately so the screen is never empty while the
+   fix and the fetch are in flight. */
+try{ const c=JSON.parse(localStorage.getItem('camwx.last')||'null'); if(c){ W=c; paint(); } }catch(e){}
+
+/* ---- settings wiring ---- */
+function syncSeg(){
+  $$('#storeSeg button').forEach(b=>b.classList.toggle('on',b.dataset.k===S.store));
+  $$('#sealSeg button').forEach(b=>b.classList.toggle('on',b.dataset.k===S.seal));
+  $('#storeHint').innerHTML=STORE_HINT[S.store];
+}
+$$('#storeSeg button').forEach(b=>b.onclick=()=>{
+  S.store=b.dataset.k; S.manual=false;                /* a new pick re-estimates */
+  syncSeg(); saveS(); paint();
+});
+$$('#sealSeg button').forEach(b=>b.onclick=()=>{ S.seal=b.dataset.k; syncSeg(); saveS(); paint(); });
+$('#gearTemp').addEventListener('input',()=>{
+  const v=parseFloat($('#gearTemp').value);
+  if(!isNaN(v)){ S.gearTemp=v; S.manual=true; saveS(); paint(); }
+});
+$('#gear').onclick=()=>$('#settings').classList.toggle('open');
+$('#refresh').onclick=load;
+$('#retry').onclick=load;
+$('#gearTemp').value=S.gearTemp;
+syncSeg();
+load();
+
+if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>

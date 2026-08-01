@@ -73,6 +73,12 @@ the large map still loads instantly offline.
 To re-georeference after changing the map image, refit the transform against
 landmarks and replace the `G = {...}` constants in `index.html`.
 
+## Also in this repo
+
+`camera/` is a second, unrelated app on the same GPS idea: it reads your
+location, pulls the local dew point, and says with a traffic light whether the
+camera and lenses should go outside. See `camera/README.md`.
+
 ## Credits
 
 Trail routes and map design by Rob. Satellite imagery © Google / Airbus.
