@@ -78,6 +78,9 @@
   .seg button{flex:1;padding:9px 4px;border:1px solid #2c3440;border-radius:9px;background:#151a20;
     color:#9fadbd;font-size:12px;font-weight:550;line-height:1.25}
   .seg button.on{background:#2f7dff;border-color:#2f7dff;color:#fff}
+  .seg.four button{font-size:11px;padding:8px 2px}
+  .hint b{color:#e8ecf1;font-weight:600}
+  .hint .fung{display:block;margin-top:6px;color:#ffc464}
   .row{display:flex;align-items:center;gap:10px;margin-top:12px}
   .row label{flex:1;font-size:12.5px;opacity:.75}
   .row input{width:96px;padding:9px 10px;border-radius:9px;border:1px solid #2c3440;
@@ -128,6 +131,25 @@
     <input type="number" id="gearTemp" inputmode="decimal" step="1">
   </div>
   <p class="hint" id="storeHint"></p>
+
+  <h2 style="margin-top:18px">Inside the house</h2>
+  <div class="row">
+    <label>Indoor temperature</label>
+    <input type="number" id="indoorT" inputmode="decimal" step="1">
+  </div>
+  <p class="sub">Indoor humidity</p>
+  <div class="seg four" id="rhSeg">
+    <button data-k="dry">Dry<br>winter</button>
+    <button data-k="avg">Average</button>
+    <button data-k="humid">Humid /<br>no AC</button>
+    <button data-k="damp">Basement</button>
+  </div>
+  <div class="row">
+    <label>Relative humidity &mdash; type the real number if you have a hygrometer</label>
+    <input type="number" id="indoorRH" inputmode="decimal" step="1">
+  </div>
+  <p class="hint" id="rhHint"></p>
+
   <h2 style="margin-top:18px">Weather sealing</h2>
   <p class="sub">Camera body</p>
   <div class="seg" id="bodySeg">
@@ -191,7 +213,9 @@ const LVL=['green','amber','red'];
 
 /* ---- settings, remembered on the device ---- */
 const SKEY='camwx.settings';
-const DEF={store:'house', body:1, lens:0, gearTemp:70, manual:false};
+const DEF={store:'house', body:1, lens:0, gearTemp:70, manual:false,
+           indoorT:70, rh:'avg', indoorRH:40};
+const RHP={dry:25, avg:40, humid:55, damp:68};
 let S=Object.assign({},DEF);
 try{ Object.assign(S, JSON.parse(localStorage.getItem(SKEY)||'{}')); }catch(e){}
 function saveS(){ try{ localStorage.setItem(SKEY,JSON.stringify(S)); }catch(e){} }
@@ -211,7 +235,7 @@ const SEAL_HINT={
 function estGearTemp(w){
   if(!w) return S.gearTemp;
   const t=w.temp, sun=w.isDay && w.cloud<50;
-  if(S.store==='house')  return 70;
+  if(S.store==='house')  return S.indoorT;
   /* Unheated space lags outdoors and stays nearer the ground temperature. */
   if(S.store==='garage') return Math.round(t + (58-t)*0.45);
   /* A closed car bakes in sun and roughly tracks air temperature after dark. */
@@ -219,7 +243,7 @@ function estGearTemp(w){
   return S.gearTemp;
 }
 const STORE_HINT={
-  house:'Fixed at 70&deg;F. Gear leaving a warm house is the classic summer fogging case &mdash; and the classic winter problem on the way back in.',
+  house:'Takes the indoor temperature set below. Gear leaving a warm house is the classic summer fogging case &mdash; and the classic winter problem on the way back in.',
   garage:'Estimated from the current outdoor temperature. Gear stored near ambient rarely fogs going out, which is why photographers keep bags in the garage.',
   car:'Estimated from outdoor temperature, sun and time of day. A closed trunk in sun runs far hotter than the air, so this is the least predictable option &mdash; type the real number if you have a thermometer.'
 };
@@ -318,23 +342,32 @@ function assess(w, gearTemp){
   return {level:worst, reasons:R, lead};
 }
 
+/* Magnus-Tetens, the standard approximation. Good to about a tenth of a degree
+   across any temperature a house or a landscape sees. */
+function dewPoint(tF, rh){
+  const t=(tF-32)*5/9, a=17.625, b=243.04;
+  const g=Math.log(Math.min(Math.max(rh,1),100)/100) + (a*t)/(b+t);
+  return (b*g/(a-g))*9/5 + 32;
+}
+
 /* Going out is usually the safe direction. The damage happens on the way back
    in, when cold gear meets warm indoor air and water condenses inside the lens
-   barrel where no cloth reaches. Indoor dew point is estimated: heating season
-   runs dry, cooling season tracks outdoors but is capped by the air handler. */
+   barrel where no cloth reaches. Indoor dew point comes from the temperature and
+   humidity you set, because guessing it is worth 25 °F of error: the same 70 °F
+   house condenses on gear below 27 °F at 20 % RH and below 55 °F at 60 %. */
 function homecoming(w){
-  const indoorT=70;
-  const indoorDew = w.temp>=65 ? Math.min(w.dew, 58) : 45;
+  const indoorT=S.indoorT;
+  const indoorDew=dewPoint(indoorT, S.indoorRH);
   const soak=w.temp;                       /* gear ends the outing at ambient */
   if(soak >= indoorDew+2)
     return {warn:false, title:'Safe to walk straight in',
       note:'Your gear will come home at about '+Math.round(soak)+'&deg;, above the '+
-           Math.round(indoorDew)+'&deg; dew point indoors. Nothing will condense on it.'};
+           Math.round(indoorDew)+'&deg; dew point inside your house. Nothing will condense on it.'};
   const dT=Math.max(indoorT-soak,1);
   const mins=Math.min(180, Math.max(20, Math.round(dT*3/5)*5));
   return {warn:true, title:'Bag it before you come inside',
     note:'Gear will come home near '+Math.round(soak)+'&deg;, below the '+Math.round(indoorDew)+
-         '&deg; dew point in a heated house &mdash; moisture will condense inside the barrel, not just on the front. '+
+         '&deg; dew point inside your house &mdash; moisture will condense inside the barrel, not just on the front. '+
          'Seal it in a bag <b>while you are still outside</b> and leave it closed about '+mins+
          ' minutes so it warms with the outdoor air trapped around it.'};
 }
@@ -481,8 +514,18 @@ function syncSeg(){
   $$('#storeSeg button').forEach(b=>b.classList.toggle('on',b.dataset.k===S.store));
   $$('#bodySeg button').forEach(b=>b.classList.toggle('on',+b.dataset.k===+S.body));
   $$('#lensSeg button').forEach(b=>b.classList.toggle('on',+b.dataset.k===+S.lens));
+  $$('#rhSeg button').forEach(b=>b.classList.toggle('on',b.dataset.k===S.rh));
   $('#storeHint').innerHTML=STORE_HINT[S.store];
   $('#sealHint').innerHTML=SEAL_HINT[sealLevel()];
+  /* Show the number the setting actually produces — the indoor dew point is the
+     whole point of asking, and it is not a figure anyone carries in their head. */
+  const idp=Math.round(dewPoint(S.indoorT,S.indoorRH));
+  $('#rhHint').innerHTML='At '+Math.round(S.indoorT)+'&deg; and '+Math.round(S.indoorRH)+
+    '%, your indoor dew point is <b>'+idp+'&deg;</b>. Gear coming home colder than that '+
+    'condenses as you walk in.'+
+    (S.indoorRH>=60 ? '<span class="fung">Sustained above 60% is also where lens fungus grows. '+
+      'That is about long-term storage rather than any one outing &mdash; a dry box or silica gel '+
+      'in the bag settles it.</span>' : '');
 }
 $$('#storeSeg button').forEach(b=>b.onclick=()=>{
   S.store=b.dataset.k; S.manual=false;                /* a new pick re-estimates */
@@ -494,10 +537,24 @@ $('#gearTemp').addEventListener('input',()=>{
   const v=parseFloat($('#gearTemp').value);
   if(!isNaN(v)){ S.gearTemp=v; S.manual=true; saveS(); paint(); }
 });
+$$('#rhSeg button').forEach(b=>b.onclick=()=>{
+  S.rh=b.dataset.k; S.indoorRH=RHP[S.rh]; $('#indoorRH').value=S.indoorRH;
+  syncSeg(); saveS(); paint();
+});
+$('#indoorRH').addEventListener('input',()=>{
+  const v=parseFloat($('#indoorRH').value);
+  if(!isNaN(v)){ S.indoorRH=Math.min(Math.max(v,1),100); S.rh=''; syncSeg(); saveS(); paint(); }
+});
+$('#indoorT').addEventListener('input',()=>{
+  const v=parseFloat($('#indoorT').value);
+  if(!isNaN(v)){ S.indoorT=v; syncSeg(); saveS(); paint(); }
+});
 $('#gear').onclick=()=>$('#settings').classList.toggle('open');
 $('#refresh').onclick=load;
 $('#retry').onclick=load;
 $('#gearTemp').value=S.gearTemp;
+$('#indoorT').value=S.indoorT;
+$('#indoorRH').value=S.indoorRH;
 syncSeg();
 load();
 
