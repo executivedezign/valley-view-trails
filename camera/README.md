@@ -48,18 +48,40 @@ when cold gear meets warm indoor air and moisture condenses *inside* the lens
 barrel where no cloth reaches — which is where fungus and permanent haze start.
 
 The app assumes the gear ends the outing at ambient temperature and compares
-that against an estimated indoor dew point: about 45 °F in a heated house
-(70 °F at 40 % RH), and outdoor dew point capped at 58 °F in cooling season. If
-the gear will come home below that, it tells you to seal it in a bag **while
-still outside** and gives an equalisation time of roughly one hour per 20 °F of
-difference, floored at 20 minutes and capped at 3 hours.
+that against the dew point *inside your house*, computed by Magnus-Tetens from
+the indoor temperature and humidity you set. If the gear will come home below
+that, it tells you to seal it in a bag **while still outside** and gives an
+equalisation time of roughly one hour per 20 °F of difference, floored at 20
+minutes and capped at 3 hours.
+
+Indoor humidity is asked rather than assumed because guessing it is worth about
+25 °F of error. The same 70 °F house:
+
+| Indoor RH | Dew point | Gear colder than this fogs on the way in |
+|---|---|---|
+| 20 % — tight house, deep winter | 27 °F | |
+| 30 % | 37 °F | |
+| 40 % | 45 °F | |
+| 50 % | 50 °F | |
+| 60 % — humidifier, or summer without AC | 55 °F | |
+| 70 % — basement | 60 °F | |
+
+A fixed 45 °F assumption is wrong in both directions: it nags for nothing in a
+dry winter house, and it misses the real risk in a humid one, which is the
+direction that costs a lens. Presets cover dry winter / average / humid or no
+AC / basement, and the field below takes an exact hygrometer reading.
+
+Above 60 % the settings panel also raises lens fungus, which grows on coatings
+and between elements in sustained humidity and effectively stops below about
+50 %. That is a storage problem rather than an outing problem, so it is a note
+rather than part of the verdict.
 
 ## Storage presets
 
 The picker sets a starting temperature, and the field below it can be typed over
 to set the number exactly.
 
-- **In the house** — fixed 70 °F
+- **In the house** — the indoor temperature set below it
 - **Garage / shed** — tracks outdoors, pulled 45 % of the way toward 58 °F
 - **Car trunk** — outdoor temperature plus 26 °F in daytime sun, 9 °F under
   cloud, 2 °F after dark
