@@ -86,6 +86,8 @@
   .row input:focus{outline:none;border-color:#2f7dff}
   .hint{font-size:11.5px;opacity:.5;margin:9px 0 0;line-height:1.4}
   .sub{font-size:12px;opacity:.62;margin:12px 0 6px}
+  #stalemsg{margin:11px 0 0;padding:9px 11px;border-radius:9px;background:#20191063;
+    border:1px solid #5a4620;color:#ffc464;font-size:12px;line-height:1.4}
   #settings{display:none} #settings.open{display:block}
 
   #home b{display:block;font-size:14px;font-weight:600;margin-bottom:4px}
@@ -146,6 +148,7 @@
     <div id="vtext"><b>Checking&hellip;</b><p>Getting your location and the local dew point.</p></div>
   </div>
   <ul class="why" id="why" hidden></ul>
+  <p id="stalemsg" hidden></p>
 </div>
 
 <div class="card" id="home" hidden>
@@ -257,7 +260,7 @@ async function getWeather(lat,lon){
   now.prob = hours.length ? hours[0].prob : 0;
   /* Rain inside the next three hours matters as much as rain right now. */
   now.prob3 = Math.max(...hours.slice(0,3).map(x=>x.prob||0), 0);
-  return {now, hours, tz:j.timezone};
+  return {now, hours, tz:j.timezone, fetchedAt:Date.now()};
 }
 
 /* ---- the rules ---- */
@@ -346,10 +349,14 @@ const WX={0:'Clear',1:'Mostly clear',2:'Partly cloudy',3:'Overcast',45:'Fog',48:
 const VERDICT=[['Take it out','Conditions are clear for the gear.'],
                ['Take it, but&hellip;',''],['Leave it inside','']];
 
-let W=null, sel=0;
+let W=null, sel=0, HRS=[], stale=false, age=0;
 
 function paint(){
   if(!W) return;
+  /* Age is measured from when the fetch happened, not from the reading's own
+     timestamp, which carries no zone and would read hours off when travelling. */
+  age=(Date.now()-(W.fetchedAt||new Date(W.now.time).getTime()))/6e4;
+  stale=age>45;
   const w=W.now, gt=S.manual ? S.gearTemp : estGearTemp(w);
   if(!S.manual){ S.gearTemp=gt; $('#gearTemp').value=gt; }
 
@@ -378,13 +385,22 @@ function paint(){
   ].map(([u,b,i])=>'<div><u>'+u+'</u><b>'+b+(i?' <i>'+i+'</i>':'')+'</b></div>').join('');
 
   /* Hourly strip: the same rules run against each future hour, with the gear
-     still leaving at its stored temperature. Green means take it then. */
+     still leaving at its stored temperature. Green means take it then.
+
+     Out of signal this is the part that still earns its keep — one fetch covers
+     24 hours, so the day's windows survive losing service. But the cached hours
+     start at the moment of the fetch, so drop the ones that have since gone by
+     and stop calling the first column "now" once the reading is old. */
+  const nowMs=Date.now();
+  HRS=W.hours.filter(h=>new Date(h.time).getTime()+36e5>nowMs);
+  if(!HRS.length) HRS=W.hours.slice(-1);
+  if(sel>=HRS.length) sel=0;
   const strip=$('#strip'); strip.innerHTML='';
-  W.hours.forEach((h,n)=>{
+  HRS.forEach((h,n)=>{
     const hw={...h, rh:0, feels:h.temp, wind:h.gust, prob3:h.prob, precip:0};
     const lv=assess(hw,gt).level;
     const d=new Date(h.time);
-    const hr=d.getHours(), lbl=n===0?'now':((hr%12||12)+(hr<12?'a':'p'));
+    const hr=d.getHours(), lbl=(n===0&&!stale)?'now':((hr%12||12)+(hr<12?'a':'p'));
     const el=document.createElement('div');
     el.className='h l'+lv+(n===sel?' sel':'');
     el.innerHTML='<u>'+lbl+'</u><em></em><s>'+Math.round(h.temp)+'&deg;</s>';
@@ -392,18 +408,29 @@ function paint(){
     strip.appendChild(el);
   });
 
-  const h=W.hours[sel]||W.hours[0];
+  const h=HRS[sel]||HRS[0];
   if(h){
     const hw={...h, rh:0, feels:h.temp, wind:h.gust, prob3:h.prob, precip:0};
     const ha=assess(hw,gt);
     const d=new Date(h.time), hr=d.getHours();
-    $('#hdet').innerHTML='<b>'+(sel===0?'Right now':((hr%12||12)+(hr<12?' AM':' PM')))+'</b> &middot; '+
+    $('#hdet').innerHTML='<b>'+((sel===0&&!stale)?'Right now':((hr%12||12)+(hr<12?' AM':' PM')))+'</b> &middot; '+
       Math.round(h.temp)+'&deg;, dew point '+Math.round(h.dew)+'&deg;, '+
       (WX[h.code]||'').toLowerCase()+', '+(h.prob||0)+'% rain.<br>'+ha.lead.t;
   }
 
+  /* A stale reading is still worth showing out of signal, but it must never
+     pass itself off as live — the verdict above was true when it was fetched. */
+  $('#stalemsg').hidden=!stale;
+  if(stale) $('#stalemsg').innerHTML='&#9888;&#65039; No fresh data &mdash; this verdict is '+
+    ago(age)+' old. Conditions now may differ; the hours ahead are still forecast.';
   const t=new Date(w.time);
-  $('#stamp').textContent='Reading from '+t.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'});
+  $('#stamp').textContent=(stale?'Last reading ':'Reading from ')+
+    t.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})+(stale?' · '+ago(age)+' ago':'');
+}
+function ago(min){
+  if(min<90) return Math.round(min)+' min';
+  const h=Math.round(min/60);
+  return h<48 ? h+' hr' : Math.round(h/24)+' days';
 }
 
 /* ---- location, then weather ---- */
