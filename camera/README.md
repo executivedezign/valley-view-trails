@@ -95,6 +95,30 @@ The same rules run against each of the next 24 hours, with the gear still
 leaving at its stored temperature, so the colours answer "if I went out then,
 what happens" — green means go. Tap an hour for its numbers.
 
+A colour says how bad, not what is wrong, so each non-green bar carries a glyph
+for its dominant risk — 💧 fogging, ⚡ lightning, ☔ rain, 💨 wind, 🔥 heat,
+❄️ cold. The legend under the strip names only the risks actually present that
+day, so it stays short and never becomes a private code.
+
+## How long a verdict lasts
+
+A snapshot is not much use for planning, so the verdict carries its own expiry,
+found by scanning forward for the first hour that changes level: *"Good until
+**3 PM** — ☔ rain moves in"*, or *"Eases at **7 PM** — clears then"*, or
+*"Holds for the next 24 hours."* The scan starts at the second column, since the
+first is the hour already under way and the live reading can disagree with it
+without anything having changed.
+
+The re-entry card gets the same treatment. It assumes you walk in now, but
+outdoors cools after dark, so a "safe to walk straight in" read at 5 PM can
+quietly expire before you actually get back. When the answer flips within the
+forecast it says so: *"Stay out past **midnight**, when it reaches 46°, and you
+will need to bag it after all."*
+
+The verdict expiry goes quiet when the reading is stale, since it is measured
+against a current reading that is no longer current. The re-entry flip stays,
+because it is drawn from the forecast hours, which are still the forecast.
+
 ## Data
 
 [Open-Meteo](https://open-meteo.com) for the forecast — no API key, CORS-enabled,

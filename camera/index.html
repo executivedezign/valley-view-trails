@@ -58,9 +58,13 @@
     background:#0d1014;border:1px solid transparent;font-variant-numeric:tabular-nums}
   #strip .h.sel{border-color:#4d5a6b;background:#232a34}
   #strip .h u{display:block;text-decoration:none;font-size:10px;opacity:.55;margin-bottom:5px}
-  #strip .h em{display:block;height:22px;border-radius:5px;margin:0 6px}
+  #strip .h em{display:block;height:22px;border-radius:5px;margin:0 6px;font-style:normal;
+    font-size:11px;line-height:22px;text-align:center}
   #strip .h.l0 em{background:#34c76a} #strip .h.l1 em{background:#f5a524} #strip .h.l2 em{background:#ff4d5e}
   #strip .h s{display:block;text-decoration:none;font-size:10.5px;opacity:.75;margin-top:5px}
+  #legend{margin-top:9px;font-size:11px;opacity:.6;line-height:1.5}
+  #valid{margin:11px 0 0;font-size:12.5px;opacity:.75}
+  #valid b{font-weight:650;opacity:1}
   #hdet{margin-top:11px;padding-top:10px;border-top:1px solid #252c36;font-size:12.5px;
     min-height:34px;opacity:.85}
   #hdet b{color:#e8ecf1;font-weight:600}
@@ -97,6 +101,8 @@
   #home p{margin:0;font-size:12.5px;opacity:.8}
   #home.warn{border-color:#5a4620;background:#20191063}
   #home.warn b{color:#ffc464}
+  #home .flip{display:block;margin-top:7px;opacity:.72}
+  #home .flip b{color:inherit;font-weight:650}
 
   #err{display:none;background:#2a1a1e;border-color:#5a2a33;font-size:13px}
   #err.show{display:block}
@@ -169,6 +175,7 @@
     <div id="light"><i></i><i></i><i></i></div>
     <div id="vtext"><b>Checking&hellip;</b><p>Getting your location and the local dew point.</p></div>
   </div>
+  <p id="valid"></p>
   <ul class="why" id="why" hidden></ul>
   <p id="stalemsg" hidden></p>
 </div>
@@ -182,6 +189,7 @@
 <div class="card">
   <h2>Next 24 hours</h2>
   <div id="strip"></div>
+  <div id="legend"></div>
   <div id="hdet"></div>
 </div>
 
@@ -299,43 +307,43 @@ function assess(w, gearTemp){
 
   /* 1. Condensation. The only risk here that damages glass permanently. */
   if(margin < 0)
-    R.push({l:RED, t:'Gear is '+Math.abs(Math.round(margin))+'&deg; colder than the dew point &mdash; it will fog the moment it is uncovered.',
+    R.push({l:RED, c:'fog', t:'Gear is '+Math.abs(Math.round(margin))+'&deg; colder than the dew point &mdash; it will fog the moment it is uncovered.',
             k:'Let it warm up indoors first, or seal it in a bag until it is above '+Math.round(w.dew)+'&deg;.'});
   else if(margin < 4)
-    R.push({l:AMBER, t:'Gear is only '+Math.round(margin)+'&deg; above the dew point &mdash; front elements may mist over.',
+    R.push({l:AMBER, c:'fog', t:'Gear is only '+Math.round(margin)+'&deg; above the dew point &mdash; front elements may mist over.',
             k:'Give it ten minutes in the shade to settle, and keep a cloth handy.'});
   else
-    R.push({l:GREEN, t:'Gear sits '+Math.round(margin)+'&deg; above the dew point &mdash; no condensation outside.'});
+    R.push({l:GREEN, c:'ok', t:'Gear sits '+Math.round(margin)+'&deg; above the dew point &mdash; no condensation outside.'});
 
   /* 2. Lightning. Stops being about the camera. */
   if(STORMY.has(w.code))
-    R.push({l:RED, t:'Thunderstorms in the area.', k:'Nothing on a tripod in the open, and nothing worth the risk to you.'});
+    R.push({l:RED, c:'storm', t:'Thunderstorms in the area.', k:'Nothing on a tripod in the open, and nothing worth the risk to you.'});
 
   /* 3. Rain, weighted by how sealed the weakest item is. */
   const sl=sealLevel(), [ra,rr]=SEAL_RAIN[sl];
   const p=Math.max(w.prob||0, w.prob3||0);
   if(w.precip>0 && sl!=='sealed')
-    R.push({l:RED, t:'It is raining now and your kit is not fully sealed.', k:'A bag cover or a different day.'});
+    R.push({l:RED, c:'rain', t:'It is raining now and your kit is not fully sealed.', k:'A bag cover or a different day.'});
   else if(w.precip>0)
-    R.push({l:AMBER, t:'Raining now, but your kit is sealed for it.', k:'Dry the mount before you swap anything.'});
+    R.push({l:AMBER, c:'rain', t:'Raining now, but your kit is sealed for it.', k:'Dry the mount before you swap anything.'});
   else if(p>=rr)
-    R.push({l:RED, t:p+'% chance of rain within three hours.', k:'Too likely to get caught out with this kit.'});
+    R.push({l:RED, c:'rain', t:p+'% chance of rain within three hours.', k:'Too likely to get caught out with this kit.'});
   else if(p>=ra)
-    R.push({l:AMBER, t:p+'% chance of rain within three hours.', k:'Worth carrying a cover.'});
+    R.push({l:AMBER, c:'rain', t:p+'% chance of rain within three hours.', k:'Worth carrying a cover.'});
 
   /* 4. Wind. Not about the camera getting wet — about what blows onto the sensor. */
   if(w.gust>=35)
-    R.push({l:RED, t:'Gusts to '+Math.round(w.gust)+' mph.', k:'Blown grit and an unsteady tripod. Do not open the body outdoors.'});
+    R.push({l:RED, c:'wind', t:'Gusts to '+Math.round(w.gust)+' mph.', k:'Blown grit and an unsteady tripod. Do not open the body outdoors.'});
   else if(w.gust>=20)
-    R.push({l:AMBER, t:'Gusts to '+Math.round(w.gust)+' mph.', k:'Fine to shoot, but change lenses in the car, not in the open.'});
+    R.push({l:AMBER, c:'wind', t:'Gusts to '+Math.round(w.gust)+' mph.', k:'Fine to shoot, but change lenses in the car, not in the open.'});
 
   /* 5. Heat and cold. Batteries and sensor noise, not damage. */
   if(w.temp>=95 && w.isDay && w.cloud<60)
-    R.push({l:AMBER, t:Math.round(w.temp)+'&deg; in open sun.', k:'Video will hit thermal limits; keep the body shaded between takes.'});
+    R.push({l:AMBER, c:'heat', t:Math.round(w.temp)+'&deg; in open sun.', k:'Video will hit thermal limits; keep the body shaded between takes.'});
   else if(w.temp<=10)
-    R.push({l:AMBER, t:'Only '+Math.round(w.temp)+'&deg; out.', k:'Batteries will fall over fast &mdash; carry spares against your body.'});
+    R.push({l:AMBER, c:'cold', t:'Only '+Math.round(w.temp)+'&deg; out.', k:'Batteries will fall over fast &mdash; carry spares against your body.'});
   else if(w.temp<=25)
-    R.push({l:AMBER, t:Math.round(w.temp)+'&deg; will cut battery life roughly in half.', k:'Bring a spare and keep it warm in a pocket.'});
+    R.push({l:AMBER, c:'cold', t:Math.round(w.temp)+'&deg; will cut battery life roughly in half.', k:'Bring a spare and keep it warm in a pocket.'});
 
   const worst=R.reduce((m,x)=>Math.max(m,x.l),GREEN);
   const lead=R.find(x=>x.l===worst);
@@ -381,6 +389,14 @@ const WX={0:'Clear',1:'Mostly clear',2:'Partly cloudy',3:'Overcast',45:'Fog',48:
   96:'Thunderstorm, hail',99:'Thunderstorm, hail'};
 const VERDICT=[['Take it out','Conditions are clear for the gear.'],
                ['Take it, but&hellip;',''],['Leave it inside','']];
+/* A colour says how bad, not what is wrong. The glyph carries the reason, so
+   the strip can be read at a glance instead of tapped hour by hour. */
+const GLYPH={fog:'&#128167;', storm:'&#9889;', rain:'&#9748;', wind:'&#128168;',
+             heat:'&#128293;', cold:'&#10052;&#65039;', ok:''};
+const RISKNAME={fog:'fogging', storm:'lightning', rain:'rain', wind:'wind',
+                heat:'heat', cold:'cold', ok:'clear'};
+const fmtH=d=>(d.getHours()%12||12)+(d.getHours()<12?' AM':' PM');
+function hourCtx(h){ return {...h, rh:0, feels:h.temp, wind:h.gust, prob3:h.prob, precip:0}; }
 
 let W=null, sel=0, HRS=[], stale=false, age=0;
 
@@ -406,7 +422,18 @@ function paint(){
 
   const hc=homecoming(w);
   $('#home').hidden=false; $('#home').classList.toggle('warn',hc.warn);
-  $('#homeTitle').innerHTML=hc.title; $('#homeNote').innerHTML=hc.note;
+  $('#homeTitle').innerHTML=hc.title;
+  /* This card assumes you walk in now. Outdoors cools after dark, so the answer
+     flips partway through an evening — say when, rather than let a "safe to walk
+     straight in" read at 5pm quietly expire by the time you actually get back. */
+  const flip=W.hours.findIndex(h=>new Date(h.time).getTime()>Date.now() &&
+                                  homecoming(h).warn!==hc.warn);
+  $('#homeNote').innerHTML=hc.note+(flip<0 ? '' :
+    ' <span class="flip">Based on walking in now. Stay out past <b>'+
+    fmtH(new Date(W.hours[flip].time))+'</b>, when it reaches '+
+    Math.round(W.hours[flip].temp)+'&deg;, and '+
+    (hc.warn?'it will be warm enough to carry straight in.'
+            :'you will need to bag it after all.')+'</span>');
 
   $('#metrics').innerHTML=[
     ['Temp',Math.round(w.temp)+'&deg;','feels '+Math.round(w.feels)+'&deg;'],
@@ -428,27 +455,50 @@ function paint(){
   HRS=W.hours.filter(h=>new Date(h.time).getTime()+36e5>nowMs);
   if(!HRS.length) HRS=W.hours.slice(-1);
   if(sel>=HRS.length) sel=0;
+  const HA=HRS.map(h=>assess(hourCtx(h),gt));
   const strip=$('#strip'); strip.innerHTML='';
   HRS.forEach((h,n)=>{
-    const hw={...h, rh:0, feels:h.temp, wind:h.gust, prob3:h.prob, precip:0};
-    const lv=assess(hw,gt).level;
-    const d=new Date(h.time);
+    const ha=HA[n], d=new Date(h.time);
     const hr=d.getHours(), lbl=(n===0&&!stale)?'now':((hr%12||12)+(hr<12?'a':'p'));
     const el=document.createElement('div');
-    el.className='h l'+lv+(n===sel?' sel':'');
-    el.innerHTML='<u>'+lbl+'</u><em></em><s>'+Math.round(h.temp)+'&deg;</s>';
+    el.className='h l'+ha.level+(n===sel?' sel':'');
+    el.innerHTML='<u>'+lbl+'</u><em>'+(ha.level?GLYPH[ha.lead.c]||'':'')+'</em>'+
+      '<s>'+Math.round(h.temp)+'&deg;</s>';
     el.onclick=()=>{ sel=n; paint(); };
     strip.appendChild(el);
   });
 
+  /* Name the risks actually present, so an amber bar is readable without
+     tapping it and the glyphs do not become a private code. */
+  const kinds=[...new Set(HA.filter(x=>x.level).map(x=>x.lead.c))];
+  $('#legend').innerHTML = kinds.length
+    ? kinds.map(c=>GLYPH[c]+' '+RISKNAME[c]).join(' &middot; ')+
+      ' &mdash; amber take care, red leave it. Tap an hour.'
+    : 'All clear for the next '+HRS.length+' hours. Tap an hour for its numbers.';
+
   const h=HRS[sel]||HRS[0];
   if(h){
-    const hw={...h, rh:0, feels:h.temp, wind:h.gust, prob3:h.prob, precip:0};
-    const ha=assess(hw,gt);
-    const d=new Date(h.time), hr=d.getHours();
-    $('#hdet').innerHTML='<b>'+((sel===0&&!stale)?'Right now':((hr%12||12)+(hr<12?' AM':' PM')))+'</b> &middot; '+
+    const ha=HA[sel]||HA[0], d=new Date(h.time);
+    $('#hdet').innerHTML='<b>'+((sel===0&&!stale)?'Right now':fmtH(d))+'</b> &middot; '+
       Math.round(h.temp)+'&deg;, dew point '+Math.round(h.dew)+'&deg;, '+
-      (WX[h.code]||'').toLowerCase()+', '+(h.prob||0)+'% rain.<br>'+ha.lead.t;
+      (WX[h.code]||'').toLowerCase()+', '+(h.prob||0)+'% rain.<br>'+ha.lead.t+
+      (ha.level&&ha.lead.k?' '+ha.lead.k:'');
+  }
+
+  /* How long the verdict above is good for. Scanning forward to the first hour
+     that changes level turns a snapshot into something you can plan around —
+     "take it out" means little without knowing whether it lasts an hour or six. */
+  /* From the second column on: the first bucket is the hour already under way,
+     and the live reading can disagree with it without anything having changed. */
+  const chg=HA.findIndex((x,i)=>i>0 && x.level!==a.level);
+  if(stale) $('#valid').innerHTML='';
+  else if(chg<0)
+    $('#valid').innerHTML='Holds for the next '+HRS.length+' hours.';
+  else{
+    const at=fmtH(new Date(HRS[chg].time)), worse=HA[chg].level>a.level;
+    $('#valid').innerHTML=(worse?'Good until <b>':'Eases at <b>')+at+'</b> &mdash; '+
+      (worse?'':'')+(HA[chg].level===GREEN?'clears then'
+        :(GLYPH[HA[chg].lead.c]+' '+RISKNAME[HA[chg].lead.c]+' moves in'))+'.';
   }
 
   /* A stale reading is still worth showing out of signal, but it must never
