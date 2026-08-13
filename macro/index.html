@@ -1,0 +1,575 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#111418">
+<title>Macro Exposure</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;min-height:100%;background:#111418;
+    font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#e8ecf1;
+    -webkit-user-select:none;user-select:none;overscroll-behavior-y:contain}
+  body{padding:calc(env(safe-area-inset-top) + 12px) 14px calc(env(safe-area-inset-bottom) + 28px);
+    max-width:560px;margin:0 auto}
+  header{display:flex;align-items:baseline;gap:8px;margin-bottom:12px}
+  header h1{flex:1;font-size:15px;font-weight:650;margin:0}
+  header s{text-decoration:none;font-size:11px;opacity:.5}
+
+  .tabs{display:flex;gap:6px;margin-bottom:14px}
+  .tabs button{flex:1;padding:10px 4px;border:1px solid #2c3440;border-radius:10px;
+    background:#151a20;color:#9fadbd;font-size:13px;font-weight:600}
+  .tabs button.on{background:#2f7dff;border-color:#2f7dff;color:#fff}
+  .pane{display:none} .pane.on{display:block}
+
+  .card{background:#1a1f26;border:1px solid #252c36;border-radius:14px;padding:14px;margin-bottom:12px}
+  .card h2{font-size:11px;letter-spacing:.09em;text-transform:uppercase;opacity:.5;
+    margin:0 0 10px;font-weight:600}
+
+  .lens{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+  .lens button{padding:9px 8px;border:1px solid #2c3440;border-radius:10px;background:#151a20;
+    color:#9fadbd;font-size:12px;font-weight:550;text-align:left;line-height:1.3}
+  .lens button.on{background:#243a5e;border-color:#2f7dff;color:#e8ecf1}
+  .lens button u{display:block;text-decoration:none;font-size:10px;opacity:.6;margin-top:2px}
+
+  .step{display:flex;align-items:center;gap:8px;margin-top:10px}
+  .step label{flex:0 0 74px;font-size:12px;opacity:.62}
+  .step .v{flex:1;text-align:center;font-size:19px;font-weight:650;
+    font-variant-numeric:tabular-nums;padding:7px 4px;background:#0f1319;border-radius:9px;
+    border:1px solid #232a34}
+  .step .v i{font-style:normal;font-size:11px;opacity:.5;font-weight:400}
+  .step button{width:44px;height:40px;flex:0 0 auto;border:0;border-radius:10px;background:#242a33;
+    color:#e8ecf1;font-size:20px;font-weight:600}
+  .step button:active{background:#39424f}
+  .step button:disabled{opacity:.3}
+
+  input[type=range]{width:100%;margin:10px 0 2px;accent-color:#2f7dff}
+  .num{width:86px;padding:8px 10px;border-radius:9px;border:1px solid #2c3440;background:#151a20;
+    color:#e8ecf1;font-size:16px;text-align:center;font-variant-numeric:tabular-nums;
+    -webkit-user-select:text;user-select:text}
+  .num:focus{outline:none;border-color:#2f7dff}
+  .row{display:flex;align-items:center;gap:10px;margin-top:10px}
+  .row label{flex:1;font-size:12.5px;opacity:.72}
+
+  .seg{display:flex;gap:6px;margin-top:8px}
+  .seg button{flex:1;padding:8px 4px;border:1px solid #2c3440;border-radius:9px;background:#151a20;
+    color:#9fadbd;font-size:12px;font-weight:550}
+  .seg button.on{background:#2f7dff;border-color:#2f7dff;color:#fff}
+
+  .hero{text-align:center;padding:4px 0 2px}
+  .hero b{display:block;font-size:40px;font-weight:700;letter-spacing:-.02em;line-height:1.05}
+  .hero s{display:block;text-decoration:none;font-size:12.5px;opacity:.7;margin-top:6px}
+  .hero em{font-style:normal;color:#ffc464}
+
+  .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:#252c36;
+    border-radius:10px;overflow:hidden;margin-top:12px}
+  .grid div{background:#1a1f26;padding:10px 11px}
+  .grid u{display:block;text-decoration:none;font-size:10px;opacity:.5;margin-bottom:3px}
+  .grid b{font-size:17px;font-weight:650;font-variant-numeric:tabular-nums}
+  .grid b i{font-style:normal;font-size:11px;opacity:.55;font-weight:400}
+
+  .note{margin:11px 0 0;padding:9px 11px;border-radius:9px;font-size:12px;line-height:1.45}
+  .note.warn{background:#20191063;border:1px solid #5a4620;color:#ffc464}
+  .note.bad{background:#2a1a1e;border:1px solid #5a2a33;color:#ff9aa4}
+  .note.ok{background:#12211a;border:1px solid #24503a;color:#7fd8a4}
+  .note.info{background:#141a22;border:1px solid #26303d;opacity:.85}
+  .note b{font-weight:650}
+
+  ul.pts{list-style:none;margin:10px 0 0;padding:0;font-size:12px;display:grid;gap:6px;opacity:.8}
+  ul.pts li{display:flex;gap:8px}
+  ul.pts li::before{content:"";flex:0 0 auto;width:5px;height:5px;border-radius:50%;
+    background:#4b5768;margin-top:6px}
+  footer{font-size:10.5px;opacity:.4;text-align:center;margin-top:14px;line-height:1.5}
+</style>
+</head>
+<body>
+
+<header><h1>Macro Exposure</h1><s>EOS R5 &middot; Laowa</s></header>
+
+<div class="tabs">
+  <button data-t="shoot" class="on">Shoot</button>
+  <button data-t="stack">Stack</button>
+  <button data-t="flash">Flash</button>
+</div>
+
+<!-- ============ SHOOT ============ -->
+<div class="pane on" id="p-shoot">
+  <div class="card">
+    <h2>Lens</h2>
+    <div class="lens" id="lensPick"></div>
+  </div>
+
+  <div class="card">
+    <h2>Magnification &amp; aperture</h2>
+    <div id="magWrap">
+      <div class="row"><label>Magnification</label>
+        <input class="num" type="number" id="magNum" step="0.1" inputmode="decimal"></div>
+      <input type="range" id="magRange">
+    </div>
+    <div class="seg" id="magTubes" hidden></div>
+    <div class="step" id="apStep">
+      <label id="apLabel">Aperture</label>
+      <button id="apDn">&minus;</button><div class="v" id="apVal">&mdash;</div><button id="apUp">+</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="hero">
+      <b id="effN">&mdash;</b>
+      <s id="effSub">&nbsp;</s>
+    </div>
+    <div class="grid" id="effGrid"></div>
+    <div id="diffNote"></div>
+  </div>
+
+  <div class="card">
+    <h2>Exposure</h2>
+    <div class="step"><label>ISO</label>
+      <button id="isoDn">&minus;</button><div class="v" id="isoVal">&mdash;</div><button id="isoUp">+</button></div>
+    <div class="step"><label>Shutter</label>
+      <button id="shDn">&minus;</button><div class="v" id="shVal">&mdash;</div><button id="shUp">+</button></div>
+    <div class="grid" id="expGrid"></div>
+    <div id="expNote"></div>
+  </div>
+
+  <div class="card">
+    <h2>This lens</h2>
+    <div id="lensInfo"></div>
+  </div>
+</div>
+
+<!-- ============ STACK ============ -->
+<div class="pane" id="p-stack">
+  <div class="card">
+    <h2>Depth of field</h2>
+    <div class="hero"><b id="dofVal">&mdash;</b><s id="dofSub">&nbsp;</s></div>
+    <div class="seg" id="cocSeg">
+      <button data-k="print">Print &mdash; 0.030 mm</button>
+      <button data-k="pixel">Pixel level &mdash; 0.009 mm</button>
+    </div>
+    <p class="note info">Depth of field is <b>2 &middot; N<sub>eff</sub> &middot; c / m&sup2;</b>, so it collapses with
+      the square of magnification. Pixel level is the honest figure if you inspect at 100% on a
+      45 MP sensor; print is the traditional standard and roughly 3&times; more forgiving.</p>
+  </div>
+
+  <div class="card">
+    <h2>Rail step</h2>
+    <div class="row"><label>Subject depth to cover</label>
+      <input class="num" type="number" id="depth" step="0.5" inputmode="decimal"> <span style="opacity:.5">mm</span></div>
+    <div class="row"><label>Slice overlap</label>
+      <input class="num" type="number" id="overlap" step="5" inputmode="numeric"> <span style="opacity:.5">%</span></div>
+    <div class="grid" id="stackGrid"></div>
+    <div id="stackNote"></div>
+  </div>
+</div>
+
+<!-- ============ FLASH ============ -->
+<div class="pane" id="p-flash">
+  <div class="card">
+    <h2>Light</h2>
+    <div class="seg" id="lightPick"></div>
+    <p class="note info" id="ttlNote"></p>
+  </div>
+
+  <div class="card">
+    <h2>Last good shot</h2>
+    <div id="baseInfo"></div>
+    <div class="seg" style="margin-top:10px">
+      <button id="saveBase">Save current as baseline</button>
+      <button id="clearBase">Clear</button>
+    </div>
+    <div class="step" id="pwStep">
+      <label>Power then</label>
+      <button id="pwDn">&minus;</button><div class="v" id="pwVal">&mdash;</div><button id="pwUp">+</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Power now</h2>
+    <div class="hero"><b id="pwNow">&mdash;</b><s id="pwSub">&nbsp;</s></div>
+    <div id="pwNote"></div>
+  </div>
+</div>
+
+<footer>All maths runs on the phone &middot; no network needed<br>
+  Effective aperture, depth of field and flash deltas for manual macro work</footer>
+
+<script>
+/* ============================================================
+   Macro Exposure — Canon EOS R5 with the Laowa macro set.
+
+   At these magnifications the marked f-stop is close to fiction: the light
+   reaching the sensor follows the EFFECTIVE aperture, N(1 + m/P), and every
+   consequence that matters downstream — exposure, diffraction, depth of field,
+   flash power — follows from that one number rather than the one on the barrel.
+
+   Five of the six lenses have no electronic contacts, so there is no TTL and no
+   EXIF. That is what makes this worth an app instead of a rule of thumb.
+   ============================================================ */
+
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const log2=x=>Math.log(x)/Math.LN2;
+
+/* ---- the kit ----
+   P is pupil magnification. For the 100mm APO it is fitted to the two losses
+   Laowa documents (1.7 stops at 1:1, 2.7 at 2x); P = 1.29 reproduces both to
+   within a twentieth of a stop. The others are treated as symmetric (P = 1),
+   the standard assumption when a manufacturer publishes nothing. */
+const LENSES=[
+ {id:'l15', name:'15mm f/4 Shift', short:'15mm', focal:15, P:1, contacts:false,
+  mMin:0.1, mMax:1, apMin:4, apMax:32,
+  wd:{1:5}, minFocus:120,
+  notes:['Shifts only — there is no tilt mechanism.',
+         'At 1:1 the subject is 5 mm from the front element. The lens shadows it — ring light or natural light only.',
+         'Remove the hood for 1:1; it fouls the subject.',
+         'Re-check aperture after every shift — the ring sits next to the shift knob and moves easily.',
+         'IS on, enter 15 mm manually. Strong wavy distortion on full frame; use the Laowa profile.']},
+
+ {id:'l24', name:'24mm f/14 Probe', short:'24mm probe', focal:24, P:1, contacts:false,
+  mMin:0.1, mMax:2, apMin:14, apMax:40,
+  wd:{2:20}, minFocus:470,
+  notes:['f/14 is wide open — this lens has no faster setting.',
+         'Waterproof front barrel. Set "release shutter without lens" before going out.',
+         'The 40 cm barrel keeps the body well back even at 20 mm working distance.',
+         'LED ring light runs off USB — set brightness before you start.',
+         'IS on, enter 24 mm manually.']},
+
+ {id:'l25', name:'25mm 2.5–5x Ultra', short:'25mm ultra', focal:25, P:1, contacts:false,
+  mMin:2.5, mMax:5, apMin:2.8, apMax:16,
+  wd:{2.5:45,5:40}, minFocus:170,
+  notes:['Does not focus to infinity — 2.5x to 5x only.',
+         'Laowa’s own guidance: f/4–5.6 handheld at 5x, f/2.8 on a tripod at 5x, f/11–16 at 2.5x.',
+         'Lens shadows the subject at these distances — ring light or twin flash required.',
+         'Focus by moving the camera on a rail. Turn IBIS off on the rail or the frame drifts between slices.',
+         'Magnification is set by extending the barrel.']},
+
+ {id:'l100', name:'100mm f/2.8 2x APO', short:'100mm APO', focal:100, P:1.29, contacts:true,
+  mMin:0.1, mMax:2, apMin:2.8, apMax:22,
+  wd:{1:89,2:71}, minFocus:247,
+  notes:['The one lens in the kit with full electronic communication — TTL, EXIF and autoexposure all work.',
+         'Aperture is set from the camera body; there is no ring on the EF version.',
+         'Best sharpness f/8–f/16 by the marked scale.',
+         'Remove the hood at 2x — it shadows the subject.',
+         'Focuses to infinity, so it doubles as a portrait telephoto.']},
+
+ {id:'l180', name:'180mm f/4.5 1.5x APO', short:'180mm APO', focal:180, P:1, contacts:false,
+  mMin:0.1, mMax:1.5, apMin:4.5, apMax:32,
+  wd:{1.5:147}, minFocus:300,
+  notes:['Most working room at high magnification — the pick for live, skittish subjects.',
+         'Internally focusing: the barrel never extends, so it will not catch branches or spook anything.',
+         'Nine rounded blades — the smoothest bokeh of the six.',
+         'The barrel function button does nothing on the RF mount: no camera communication.',
+         'IS on, enter 180 mm manually.']},
+
+ {id:'aur', name:'Aurogon 10–50x', short:'Aurogon', focal:null, P:1, contacts:false,
+  aurogon:true, tubes:[10,20,35,50], wdFixed:20, apMin:null, apMax:null,
+  notes:['NA replaces the f-stop: 0.5 is wide open, 0.15 fully stopped down, eight detents between.',
+         'Working distance is 20 mm at every magnification — swapping tubes needs no recalibration.',
+         'Electronic shutter only; IS off entirely. Any vibration at all destroys the frame.',
+         'Remote release, and do not touch the camera during capture.',
+         '10x works outdoors on a tripod. 20x needs very controlled conditions. 35x and 50x are lab work.']}
+];
+
+/* Eight NA detents from 0.5 to 0.15, spaced logarithmically the way aperture
+   scales always are. */
+const NA=[...Array(8)].map((_,i)=>+(0.5*Math.pow(0.15/0.5, i/7)).toFixed(3));
+
+/* Third-stop scales, as the R5 actually offers them. */
+const FSTOPS=[1,1.1,1.2,1.4,1.6,1.8,2,2.2,2.5,2.8,3.2,3.5,4,4.5,5,5.6,6.3,7.1,8,9,10,11,13,14,
+              16,18,20,22,25,29,32,36,40,45,51,57,64];
+const ISOS=[100,125,160,200,250,320,400,500,640,800,1000,1250,1600,2000,2500,3200,4000,5000,
+            6400,8000,10000,12800,16000,20000,25600,32000,40000,51200];
+const SHUT=(()=>{                       /* 30 s to 1/8000 in thirds */
+  const out=[]; for(let k=0;k<=51;k++){ const t=30/Math.pow(2,k/3);
+    out.push({t, label: t>=1 ? (Math.round(t*10)/10)+'"' : '1/'+Math.round(1/t)}); }
+  return out;
+})();
+
+/* R5 body facts that drive the warnings. */
+const R5={pitch:0.00439 /* mm */, syncMech:1/200, syncEFCS:1/250, isoMax:51200};
+const COC={print:0.030, pixel:0.009};
+
+const LIGHTS=[
+ {id:'v860', name:'Godox V860III-C', steps:22, minStop:7, ttl:true,
+  note:'Full TTL — but only on the 100mm APO. On the other five the camera has no aperture to work from, so use manual power.'},
+ {id:'mf12', name:'Godox MF-12 twin', steps:22, minStop:7, ttl:true,
+  note:'Purpose-built for macro. TTL again depends on the lens reporting an aperture.'},
+ {id:'kx800', name:'Kuang Ren KX-800', steps:22, minStop:7, ttl:false,
+  note:'Manual only. Twin heads on flexible arms — the arm position matters as much as the power setting.'},
+ {id:'cont', name:'Continuous LED', steps:0, minStop:0, ttl:false,
+  note:'Lume Cube V2 or SmallRig RM03. Continuous light meters normally and needs no power maths — but at these effective apertures it rarely has the output, and shutter speed is back in play.'}
+];
+
+/* ---- state ---- */
+const KEY='macroexp.v1';
+const DEF={lens:'l100', m:1, apIdx:18, naIdx:0, tube:10, isoIdx:0, shIdx:39,
+           coc:'print', depth:5, overlap:30, light:'mf12', basePw:3, base:null};
+let S=Object.assign({},DEF);
+try{ Object.assign(S, JSON.parse(localStorage.getItem(KEY)||'{}')); }catch(e){}
+const save=()=>{ try{ localStorage.setItem(KEY,JSON.stringify(S)); }catch(e){} };
+const lens=()=>LENSES.find(l=>l.id===S.lens)||LENSES[3];
+
+/* ---- the physics ----
+   Effective aperture is the hinge. Everything else in this app reads off it. */
+function apList(l){ return FSTOPS.filter(f=>f>=l.apMin-1e-9 && f<=l.apMax+1e-9); }
+function markedN(){ const l=lens(); if(l.aurogon) return null;
+  const list=apList(l); return list[Math.min(S.apIdx,list.length-1)] ?? list[0]; }
+function mag(){ const l=lens(); return l.aurogon ? S.tube : S.m; }
+
+function effAperture(){
+  const l=lens(), m=mag();
+  /* Microscope objectives are specified by numerical aperture; the working
+     f-number is (1 + m) / 2NA, which is the same quantity by another road. */
+  if(l.aurogon) return (1+m)/(2*NA[S.naIdx]);
+  return markedN()*(1+m/l.P);
+}
+function lightLost(){ const l=lens(); return l.aurogon ? null : 2*log2(1+mag()/l.P); }
+
+/* Airy disk diameter at 550 nm against the R5's 4.39 um pixels. Diffraction is
+   not a cliff — it starts costing resolution long before it is visible in print,
+   so this reports three honest bands rather than one threshold. */
+function diffraction(){
+  const airy=2.44*0.00055*effAperture();           /* mm */
+  if(airy < 2*R5.pitch) return {lvl:0, airy, t:'Not diffraction limited.'};
+  if(airy < COC.print)  return {lvl:1, airy, t:'Softening at 100%, invisible in a print.'};
+  return {lvl:2, airy, t:'Diffraction visible in print, not just on screen.'};
+}
+function dof(){ const m=mag(); return m<=0 ? Infinity : 2*effAperture()*COC[S.coc]/(m*m); }
+
+/* Working distance is quoted by Laowa at specific magnifications, so report the
+   nearest documented anchor and say which it is, rather than inventing a curve. */
+function workingDist(){
+  const l=lens();
+  if(l.wdFixed) return {mm:l.wdFixed, at:null};
+  if(!l.wd) return null;
+  const keys=Object.keys(l.wd).map(Number);
+  const k=keys.reduce((a,b)=>Math.abs(b-mag())<Math.abs(a-mag())?b:a);
+  return {mm:l.wd[k], at:k};
+}
+
+/* ---- formatting ---- */
+const fmtN=n=>n>=10?Math.round(n):Math.round(n*10)/10;
+const stops=s=>(s>=0?'+':'−')+Math.abs(s).toFixed(1);
+function fmtLen(mm){
+  if(mm===Infinity) return '∞';
+  if(mm<1) return Math.round(mm*1000)+' µm';
+  if(mm<10) return (Math.round(mm*100)/100)+' mm';
+  return (Math.round(mm*10)/10)+' mm';
+}
+/* Godox-style: the fraction at or below the setting, plus the thirds above it. */
+function fmtPower(st){
+  const k=Math.ceil(st-1e-9), r=k-st;
+  const frac='1/'+Math.pow(2,Math.max(k,0));
+  const third=Math.round(r*3);
+  return frac+(third? ' +'+third+'/3':'');
+}
+
+/* ---- rendering ---- */
+function renderLensPicks(){
+  $('#lensPick').innerHTML=LENSES.map(l=>
+    '<button data-l="'+l.id+'" class="'+(l.id===S.lens?'on':'')+'">'+l.short+
+    '<u>'+(l.aurogon?'10–50x · NA':(l.mMax+'x · f/'+l.apMin+'–'+l.apMax))+'</u></button>').join('');
+  $$('#lensPick button').forEach(b=>b.onclick=()=>{
+    S.lens=b.dataset.l; const l=lens();
+    if(!l.aurogon){ S.m=Math.min(Math.max(S.m,l.mMin),l.mMax); S.apIdx=Math.min(S.apIdx,apList(l).length-1); }
+    save(); renderAll();
+  });
+}
+
+function renderControls(){
+  const l=lens();
+  $('#magWrap').hidden=!!l.aurogon;
+  $('#magTubes').hidden=!l.aurogon;
+  if(l.aurogon){
+    $('#magTubes').innerHTML=l.tubes.map(t=>
+      '<button data-t="'+t+'" class="'+(t===S.tube?'on':'')+'">'+t+'x</button>').join('');
+    $$('#magTubes button').forEach(b=>b.onclick=()=>{ S.tube=+b.dataset.t; save(); renderAll(); });
+    $('#apLabel').textContent='NA';
+    $('#apVal').innerHTML='NA '+NA[S.naIdx].toFixed(2)+
+      ' <i>'+(S.naIdx===0?'widest':(S.naIdx===7?'min':''))+'</i>';
+    $('#apDn').disabled=S.naIdx>=NA.length-1; $('#apUp').disabled=S.naIdx<=0;
+  }else{
+    const r=$('#magRange');
+    r.min=l.mMin; r.max=l.mMax; r.step=0.05; r.value=S.m;
+    $('#magNum').value=Math.round(S.m*100)/100;
+    $('#magNum').min=l.mMin; $('#magNum').max=l.mMax;
+    $('#apLabel').textContent='Aperture';
+    const list=apList(l), n=markedN();
+    $('#apVal').innerHTML='f/'+n+' <i>marked</i>';
+    $('#apDn').disabled=S.apIdx<=0; $('#apUp').disabled=S.apIdx>=list.length-1;
+  }
+  $('#isoVal').textContent=ISOS[S.isoIdx];
+  $('#isoDn').disabled=S.isoIdx<=0; $('#isoUp').disabled=S.isoIdx>=ISOS.length-1;
+  $('#shVal').textContent=SHUT[S.shIdx].label;
+  $('#shDn').disabled=S.shIdx>=SHUT.length-1; $('#shUp').disabled=S.shIdx<=0;
+}
+
+function renderShoot(){
+  const l=lens(), m=mag(), N=effAperture(), lost=lightLost(), d=diffraction();
+
+  $('#effN').textContent='f/'+fmtN(N);
+  $('#effSub').innerHTML = l.aurogon
+    ? 'working f-number at '+m+'x, NA '+NA[S.naIdx].toFixed(2)
+    : 'effective at '+ (Math.round(m*100)/100) +'x — you set f/'+markedN()+
+      ', the sensor sees <em>'+lost.toFixed(1)+' stops less</em>';
+
+  const wd=workingDist();
+  $('#effGrid').innerHTML=[
+    ['Magnification', (Math.round(m*100)/100)+'x', ''],
+    ['Light lost', lost==null?'—':lost.toFixed(1)+' stops', lost==null?'NA-based':''],
+    ['Working distance', wd?fmtLen(wd.mm):'—', wd&&wd.at?('at '+wd.at+'x'):(wd?'fixed':'')],
+    ['Airy disk', Math.round(d.airy*1000)+' µm', 'pixel 4.4 µm']
+  ].map(([u,b,i])=>'<div><u>'+u+'</u><b>'+b+(i?' <i>'+i+'</i>':'')+'</b></div>').join('');
+
+  $('#diffNote').innerHTML='<p class="note '+['ok','warn','bad'][d.lvl]+'">'+d.t+
+    (d.lvl?' At f/'+fmtN(N)+' effective the Airy disk spans '+
+      (d.airy/R5.pitch).toFixed(1)+' pixels.'+
+      (l.aurogon||m>=2.5?' At this magnification that is unavoidable — every aperture on this lens is past the limit, so choose for depth of field instead.':''):'')+'</p>';
+
+  /* Exposure. With a manual lens the R5 still meters off the sensor, so the
+     light loss is already in what the meter shows — it is not a correction to
+     dial in. It bites on flash power, on ISO headroom, and on diffraction. */
+  const t=SHUT[S.shIdx].t, iso=ISOS[S.isoIdx];
+  const ev100=log2(N*N/t)-log2(iso/100);
+  const handMin=l.focal? 1/(l.focal*(1+m)) : null;
+  $('#expGrid').innerHTML=[
+    ['Scene light', 'EV '+ev100.toFixed(1), 'at ISO 100'],
+    ['Handheld floor', handMin? (handMin>=1?'—':'1/'+Math.round(1/handMin)) : '—',
+      handMin?'1/(focal × (1+m))':'tripod only']
+  ].map(([u,b,i])=>'<div><u>'+u+'</u><b>'+b+(i?' <i>'+i+'</i>':'')+'</b></div>').join('');
+
+  let en='';
+  if(iso>6400) en+='<p class="note warn">ISO '+iso+' is past the 6400 you set as your ceiling.</p>';
+  if(handMin && t>handMin && m>=0.5)
+    en+='<p class="note warn">'+SHUT[S.shIdx].label+' is slower than the '+
+        '1/'+Math.round(1/handMin)+' this magnification wants handheld — shake is amplified by (1+m) too. '+
+        'On a rail this is fine; handheld, let the flash duration be your shutter.</p>';
+  if(l.aurogon) en+='<p class="note bad">Electronic shutter only on the Aurogon, and IBIS off. Remote release, hands off the camera.</p>';
+  if(!l.contacts) en+='<p class="note info">No electronic contacts: no TTL, and <b>nothing about this exposure lands in EXIF</b>. The sensor-based meter still works, so the light loss above is already reflected in what the camera shows you — it matters for flash power, ISO headroom and diffraction, not as a correction to dial in.</p>';
+  $('#expNote').innerHTML=en;
+
+  $('#lensInfo').innerHTML='<b style="font-size:14px">'+l.name+'</b>'+
+    '<ul class="pts">'+l.notes.map(n=>'<li><span>'+n+'</span></li>').join('')+'</ul>'+
+    (l.minFocus?'<p class="note info">Minimum focus '+fmtLen(l.minFocus)+' from the sensor plane — the working distance above is from the front of the lens, which is the one you can actually judge.</p>':'');
+}
+
+function renderStack(){
+  const d=dof(), m=mag();
+  $('#dofVal').textContent=fmtLen(d);
+  $('#dofSub').innerHTML='total depth at '+(Math.round(m*100)/100)+'x, f/'+fmtN(effAperture())+
+    ' effective, c = '+COC[S.coc]+' mm';
+  $$('#cocSeg button').forEach(b=>b.classList.toggle('on',b.dataset.k===S.coc));
+
+  const step=d*(1-S.overlap/100);
+  const frames=Math.max(1, Math.ceil(S.depth/step)+1);
+  $('#stackGrid').innerHTML=[
+    ['Rail step', fmtLen(step), S.overlap+'% overlap'],
+    ['Frames', String(frames), 'for '+S.depth+' mm']
+  ].map(([u,b,i])=>'<div><u>'+u+'</u><b>'+b+(i?' <i>'+i+'</i>':'')+'</b></div>').join('');
+
+  let n='';
+  if(step<0.005) n+='<p class="note warn">A '+fmtLen(step)+' step is below what most manual rails resolve — this wants a motorised controller.</p>';
+  if(frames>150) n+='<p class="note warn">'+frames+' frames. Worth stopping down, accepting the diffraction, and halving the count.</p>';
+  n+='<p class="note info">Step is depth of field less the overlap. Overlap is not optional — slices that merely touch leave banding where the sharp zones meet, and 30% is the usual insurance.</p>';
+  $('#stackNote').innerHTML=n;
+}
+
+function renderFlash(){
+  const L=LIGHTS.find(x=>x.id===S.light)||LIGHTS[1];
+  $('#lightPick').innerHTML=LIGHTS.map(x=>
+    '<button data-k="'+x.id+'" class="'+(x.id===S.light?'on':'')+'" style="font-size:11px">'+
+    x.name.replace(' ','<br>')+'</button>').join('');
+  $$('#lightPick button').forEach(b=>b.onclick=()=>{ S.light=b.dataset.k; save(); renderAll(); });
+  $('#ttlNote').innerHTML=L.note;
+
+  const cont=(L.id==='cont');
+  $('#pwStep').hidden=cont;
+  $('#pwVal').textContent=fmtPower(S.basePw);
+  $('#pwDn').disabled=S.basePw>=7; $('#pwUp').disabled=S.basePw<=0;
+
+  if(!S.base){
+    $('#baseInfo').innerHTML='<p class="note info">Nothing saved yet. Get one frame right by eye, then come back and save it — everything after that is a delta from it.<br><br>Guide numbers are quoted in metres and stop meaning much at a 20 mm working distance, so a remembered good shot beats the arithmetic.</p>';
+  }else{
+    const b=S.base;
+    $('#baseInfo').innerHTML='<div class="grid">'+
+      [['Magnification',(Math.round(b.m*100)/100)+'x',''],
+       ['Effective','f/'+fmtN(b.N),''],
+       ['ISO',String(b.iso),''],
+       ['Power',fmtPower(b.pw),'']]
+      .map(([u,v,i])=>'<div><u>'+u+'</u><b>'+v+'</b></div>').join('')+'</div>';
+  }
+
+  if(cont){
+    $('#pwNow').textContent='—';
+    $('#pwSub').textContent='continuous light meters normally';
+    $('#pwNote').innerHTML='<p class="note info">With LEDs the shutter is back in the equation and the camera meter tells the truth. What the effective aperture still costs you is output: at f/'+
+      fmtN(effAperture())+' these panels will struggle, so expect long exposures on a rail.</p>';
+    return;
+  }
+  if(!S.base){ $('#pwNow').textContent='—'; $('#pwSub').textContent='save a baseline first'; $('#pwNote').innerHTML=''; return; }
+
+  /* Flash exposure follows aperture and ISO only — shutter is irrelevant below
+     sync. Two stops of aperture change is two stops of power, and the inverse
+     square law is already inside the effective-aperture figure. */
+  const b=S.base, N=effAperture(), iso=ISOS[S.isoIdx];
+  const delta=2*log2(N/b.N) - log2(iso/b.iso);      /* stops MORE light needed */
+  const want=b.pw - delta;                          /* power measured in stops below full */
+  const clamped=Math.max(0, Math.min(7, want));
+  $('#pwNow').textContent=fmtPower(Math.round(clamped*3)/3);
+  $('#pwSub').innerHTML=delta===0? 'same as your baseline'
+    : stops(delta)+' stops of light needed versus the baseline';
+
+  let n='';
+  if(want<0) n+='<p class="note bad">Full power is '+Math.abs(want).toFixed(1)+
+    ' stops short. Raise ISO, open up, or bring the heads closer.</p>';
+  else if(want>7) n+='<p class="note warn">Below the minimum step — you have light to spare. Pull the heads back or drop ISO for cleaner files.</p>';
+  const t=SHUT[S.shIdx].t;
+  if(t<R5.syncEFCS) n+='<p class="note bad">'+SHUT[S.shIdx].label+
+    ' is past flash sync. The R5 syncs at 1/200 mechanical, 1/250 with electronic first curtain, and will not fire flash on the fully electronic shutter — faster than that and you get a black band.</p>';
+  else if(t<R5.syncMech) n+='<p class="note warn">'+SHUT[S.shIdx].label+
+    ' needs electronic first curtain; the mechanical shutter syncs only to 1/200.</p>';
+  n+='<p class="note info">Shutter speed does not appear in this calculation, and that is not an oversight — below sync speed the whole flash lands in the frame regardless. Shutter controls your ambient; aperture and ISO control the flash.</p>';
+  $('#pwNote').innerHTML=n;
+}
+
+function renderAll(){ renderLensPicks(); renderControls(); renderShoot(); renderStack(); renderFlash(); }
+
+/* ---- wiring ---- */
+$$('.tabs button').forEach(b=>b.onclick=()=>{
+  $$('.tabs button').forEach(x=>x.classList.toggle('on',x===b));
+  $$('.pane').forEach(p=>p.classList.toggle('on', p.id==='p-'+b.dataset.t));
+});
+const bump=(k,d,max)=>{ S[k]=Math.max(0,Math.min(max,S[k]+d)); save(); renderAll(); };
+$('#apUp').onclick=()=>{ const l=lens();
+  l.aurogon ? bump('naIdx',-1,NA.length-1) : bump('apIdx',1,apList(l).length-1); };
+$('#apDn').onclick=()=>{ const l=lens();
+  l.aurogon ? bump('naIdx',1,NA.length-1) : bump('apIdx',-1,apList(l).length-1); };
+$('#isoUp').onclick=()=>bump('isoIdx',1,ISOS.length-1);
+$('#isoDn').onclick=()=>bump('isoIdx',-1,ISOS.length-1);
+$('#shUp').onclick =()=>bump('shIdx',-1,SHUT.length-1);   /* up = faster */
+$('#shDn').onclick =()=>bump('shIdx',1,SHUT.length-1);
+$('#magRange').addEventListener('input',e=>{ S.m=+e.target.value; save(); renderAll(); });
+$('#magNum').addEventListener('input',e=>{ const v=parseFloat(e.target.value); const l=lens();
+  if(!isNaN(v)){ S.m=Math.min(Math.max(v,l.mMin),l.mMax); save(); renderAll(); } });
+$$('#cocSeg button').forEach(b=>b.onclick=()=>{ S.coc=b.dataset.k; save(); renderAll(); });
+$('#depth').addEventListener('input',e=>{ const v=parseFloat(e.target.value);
+  if(!isNaN(v)&&v>0){ S.depth=v; save(); renderStack(); } });
+$('#overlap').addEventListener('input',e=>{ const v=parseFloat(e.target.value);
+  if(!isNaN(v)&&v>=0&&v<95){ S.overlap=v; save(); renderStack(); } });
+$('#pwUp').onclick=()=>{ S.basePw=Math.max(0,Math.round((S.basePw-1/3)*3)/3); save(); renderAll(); };
+$('#pwDn').onclick=()=>{ S.basePw=Math.min(7,Math.round((S.basePw+1/3)*3)/3); save(); renderAll(); };
+$('#saveBase').onclick=()=>{ S.base={m:mag(), N:effAperture(), iso:ISOS[S.isoIdx], pw:S.basePw};
+  save(); renderAll(); };
+$('#clearBase').onclick=()=>{ S.base=null; save(); renderAll(); };
+
+$('#depth').value=S.depth; $('#overlap').value=S.overlap;
+renderAll();
+if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>
