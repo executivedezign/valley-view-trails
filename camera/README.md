@@ -137,5 +137,20 @@ timestamped at the bottom.
 
 - `index.html` — the whole app; rules are in `assess()` and `homecoming()`
 - `sw.js`, `manifest.json` — home-screen install and shell caching
+- `make-icon.py` — draws the icon set; re-run it after changing the artwork
+- `icon-*.png`, `favicon-32.png` — generated, do not hand-edit
+
+## The icon
+
+A lens with condensation beading on the glass — the failure the app exists to
+warn about. Drawn in code rather than by hand so every size comes off the same
+geometry: `python3 make-icon.py` rewrites all five files.
+
+iOS applies its own squircle mask to `apple-touch-icon`, so the art is
+full-bleed and the lens is kept well inside the corners. The Android maskable
+variant shrinks the lens further, to survive a circular crop.
+
+It is deliberately generic and not NHW branding — a placeholder good enough to
+ship, meant to be replaced when the real mark is ready.
 
 To change a threshold, edit `SEAL_RAIN` or the numbers in `assess()`.
