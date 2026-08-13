@@ -83,6 +83,10 @@ landmarks and replace the `G = {...}` constants in `index.html`.
 location, pulls the local dew point, and says with a traffic light whether the
 camera and lenses should go outside. See `camera/README.md`.
 
+`macro/` is a third: effective aperture, depth of field, rail step and flash
+power for manual macro work with the Laowa set on an R5. No GPS, no network —
+pure optics. See `macro/README.md`.
+
 ## Credits
 
 Trail routes and map design by Rob. Satellite imagery © Google / Airbus.
