@@ -1,4 +1,5 @@
-const C='vvtrails-v3',F=['.','index.html','map.enc','manifest.json'];
+const C='vvtrails-v4',F=['.','index.html','map.enc','manifest.json',
+  'apple-touch-icon.png','icon-32.png','icon-192.png','icon-512.png','icon-maskable.png'];
 self.addEventListener('install',e=>{self.skipWaiting();
   e.waitUntil(caches.open(C).then(c=>c.addAll(F)).catch(()=>{}))});
 self.addEventListener('activate',e=>{e.waitUntil(Promise.all([clients.claim(),

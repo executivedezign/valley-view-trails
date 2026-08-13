@@ -62,6 +62,10 @@ repo, in `Desktop\MAPS\`), pick `map.jpg`, and replace `map.enc`.
 - `index.html` — the whole app; georeference constants are inlined at the top of the script
 - `map.enc` — encrypted 1600×2071 map render (0.43 m/px on the ground)
 - `sw.js`, `manifest.json` — offline caching and home-screen install
+- `icon-*.png`, `apple-touch-icon.png` — app icon; original artwork, a plan-view
+  trail network with the app's own locator dot. Regenerate with `make-icon.py`
+  in `Desktop\MAPS\`. `icon-maskable.png` is inset so Android's circle crop
+  cannot clip the dot.
 
 `map.jpg`, the plaintext source, is gitignored and stays local — publishing it
 would defeat the encryption.
