@@ -1,7 +1,10 @@
 """Builds the Macro Exposure field manual as a PDF.
 
-Kept in the repo so the manual can be regenerated whenever the app changes,
-rather than drifting out of date as a hand-made document would.
+Written as a how-to, not a reference: what to set, in what order, for the kinds
+of shots this kit actually takes. The arithmetic is in an appendix at the back
+for anyone who wants it, and nowhere else.
+
+Kept in the repo so the manual can be regenerated when the app changes.
 """
 from reportlab.lib.pagesizes import LETTER
 from reportlab.lib.units import inch
@@ -9,7 +12,7 @@ from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_LEFT
 from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle,
-                                PageBreak, Image, KeepTogether)
+                                PageBreak, Image)
 
 OUT = '/home/user/valley-view-trails/macro/Macro-Exposure-Manual.pdf'
 ICON = '/home/user/valley-view-trails/macro/icon-512.png'
@@ -27,48 +30,65 @@ S['title'] = ParagraphStyle('title', parent=ss['Title'], fontName='Helvetica-Bol
                             fontSize=26, leading=30, textColor=INK, alignment=TA_LEFT,
                             spaceAfter=4)
 S['sub'] = ParagraphStyle('sub', parent=ss['Normal'], fontName='Helvetica',
-                          fontSize=12, leading=16, textColor=MUTED, spaceAfter=18)
+                          fontSize=12, leading=16, textColor=MUTED, spaceAfter=16)
 S['h1'] = ParagraphStyle('h1', parent=ss['Heading1'], fontName='Helvetica-Bold',
-                         fontSize=15, leading=19, textColor=ACCENT,
-                         spaceBefore=13, spaceAfter=6)
+                         fontSize=15.5, leading=19, textColor=ACCENT,
+                         spaceBefore=13, spaceAfter=5)
+S['kick'] = ParagraphStyle('kick', parent=ss['Normal'], fontName='Helvetica-Oblique',
+                           fontSize=10, leading=14, textColor=MUTED, spaceAfter=9)
 S['h2'] = ParagraphStyle('h2', parent=ss['Heading2'], fontName='Helvetica-Bold',
                          fontSize=11.5, leading=15, textColor=INK,
-                         spaceBefore=9, spaceAfter=4)
+                         spaceBefore=10, spaceAfter=4)
 S['p'] = ParagraphStyle('p', parent=ss['Normal'], fontName='Helvetica',
-                        fontSize=9.8, leading=13.8, textColor=INK, spaceAfter=6)
-S['li'] = ParagraphStyle('li', parent=S['p'], leftIndent=13, bulletIndent=3, spaceAfter=4)
+                        fontSize=9.8, leading=13.9, textColor=INK, spaceAfter=6)
+S['li'] = ParagraphStyle('li', parent=S['p'], leftIndent=14, bulletIndent=3, spaceAfter=4)
+S['step'] = ParagraphStyle('step', parent=S['p'], leftIndent=20, bulletIndent=3,
+                           spaceAfter=6, leading=14.2)
 S['note'] = ParagraphStyle('note', parent=S['p'], fontSize=9.3, leading=13.4,
                            textColor=WARN, leftIndent=9, rightIndent=9,
-                           spaceBefore=5, spaceAfter=9, borderPadding=7)
-S['form'] = ParagraphStyle('form', parent=S['p'], fontName='Courier-Bold', fontSize=10.5,
-                           leading=15, textColor=ACCENT, leftIndent=10,
-                           spaceBefore=3, spaceAfter=8)
+                           spaceBefore=5, spaceAfter=9)
+S['big'] = ParagraphStyle('big', parent=S['p'], fontSize=10.6, leading=15,
+                          leftIndent=9, rightIndent=9, spaceBefore=6, spaceAfter=6)
 S['cap'] = ParagraphStyle('cap', parent=S['p'], fontSize=8.6, leading=12, textColor=MUTED)
+
+story = []
+A = story.append
 
 
 def P(t, s='p'):
-    return Paragraph(t, S[s])
+    A(Paragraph(t, S[s]))
 
 
-def bullets(items):
-    """Appends straight into the story, since a list of flowables cannot be
-    handed to list.append in one go."""
+def bullets(items, style='li', bullet='•'):
     for t in items:
-        story.append(Paragraph(t, S['li'], bulletText='\u2022'))
+        A(Paragraph(t, S[style], bulletText=bullet))
+
+
+def steps(items):
+    for i, t in enumerate(items, 1):
+        A(Paragraph(t, S['step'], bulletText='%d.' % i))
+
+
+def _box(t, style, bg, edge):
+    A(Table([[Paragraph(t, S[style])]], colWidths=[6.5 * inch],
+            style=TableStyle([('BACKGROUND', (0, 0), (-1, -1), bg),
+                              ('BOX', (0, 0), (-1, -1), 0.6, edge),
+                              ('LEFTPADDING', (0, 0), (-1, -1), 0),
+                              ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+                              ('TOPPADDING', (0, 0), (-1, -1), 3),
+                              ('BOTTOMPADDING', (0, 0), (-1, -1), 3)])))
 
 
 def note(t):
-    return Table([[Paragraph(t, S['note'])]], colWidths=[6.5 * inch],
-                 style=TableStyle([('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#fdf6e8')),
-                                   ('BOX', (0, 0), (-1, -1), 0.6, colors.HexColor('#e0c68b')),
-                                   ('LEFTPADDING', (0, 0), (-1, -1), 0),
-                                   ('RIGHTPADDING', (0, 0), (-1, -1), 0),
-                                   ('TOPPADDING', (0, 0), (-1, -1), 2),
-                                   ('BOTTOMPADDING', (0, 0), (-1, -1), 2)]))
+    _box(t, 'note', colors.HexColor('#fdf6e8'), colors.HexColor('#e0c68b'))
 
 
-def table(rows, widths, align_right=()):
-    cell = ParagraphStyle('cell', parent=S['p'], fontSize=9, leading=12.4, spaceAfter=0)
+def key(t):
+    _box(t, 'big', colors.HexColor('#eef5f1'), colors.HexColor('#a9c9ba'))
+
+
+def table(rows, widths, align=()):
+    cell = ParagraphStyle('cell', parent=S['p'], fontSize=9, leading=12.3, spaceAfter=0)
     head = ParagraphStyle('head', parent=cell, fontName='Helvetica-Bold', textColor=colors.white)
     data = [[Paragraph(c, head) for c in rows[0]]]
     for r in rows[1:]:
@@ -77,16 +97,14 @@ def table(rows, widths, align_right=()):
     st = [('BACKGROUND', (0, 0), (-1, 0), ACCENT),
           ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
           ('GRID', (0, 0), (-1, -1), 0.4, RULE),
-          ('LEFTPADDING', (0, 0), (-1, -1), 6),
-          ('RIGHTPADDING', (0, 0), (-1, -1), 6),
-          ('TOPPADDING', (0, 0), (-1, -1), 5),
-          ('BOTTOMPADDING', (0, 0), (-1, -1), 5)]
+          ('LEFTPADDING', (0, 0), (-1, -1), 6), ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+          ('TOPPADDING', (0, 0), (-1, -1), 4.5), ('BOTTOMPADDING', (0, 0), (-1, -1), 4.5)]
     for i in range(2, len(data), 2):
         st.append(('BACKGROUND', (0, i), (-1, i), BAND))
-    for c in align_right:
-        st.append(('ALIGN', (c, 0), (c, -1), 'RIGHT'))
+    for c in align:
+        st.append(('ALIGN', (c, 0), (c, -1), 'CENTER'))
     t.setStyle(TableStyle(st))
-    return t
+    A(t)
 
 
 def chrome(canvas, doc):
@@ -95,7 +113,7 @@ def chrome(canvas, doc):
     if doc.page > 1:
         canvas.setFont('Helvetica', 8)
         canvas.setFillColor(MUTED)
-        canvas.drawString(1 * inch, h - 0.62 * inch, 'MACRO EXPOSURE — FIELD MANUAL')
+        canvas.drawString(1 * inch, h - 0.62 * inch, 'MACRO EXPOSURE — HOW TO USE IT')
         canvas.drawRightString(w - 1 * inch, h - 0.62 * inch, 'Canon EOS R5 · Laowa macro set')
         canvas.setStrokeColor(RULE)
         canvas.setLineWidth(0.5)
@@ -106,298 +124,337 @@ def chrome(canvas, doc):
     canvas.restoreState()
 
 
-story = []
-A = story.append
-
-# ---------------------------------------------------------------- cover
-A(Spacer(1, 0.5 * inch))
-_ic = Image(ICON, width=1.15 * inch, height=1.15 * inch)
+# ================================================================ cover
+A(Spacer(1, 0.35 * inch))
+_ic = Image(ICON, width=1.05 * inch, height=1.05 * inch)
 _ic.hAlign = 'LEFT'
 A(_ic)
-A(Spacer(1, 0.28 * inch))
-A(P('Macro Exposure', 'title'))
-A(P('Field manual &middot; Canon EOS R5 with the Laowa macro set', 'sub'))
-A(P('This app answers the four questions that manual macro work keeps asking and that '
-    'nothing on the camera will tell you: what aperture the sensor is <i>actually</i> seeing, '
-    'how thin the plane of focus has become, how far to advance the rail, and how much flash '
-    'power the last change just cost you.'))
-A(P('It runs entirely on the phone. No network, no GPS, no permissions, no account. Once the '
-    'page has loaded it works in a cellar or a swamp with the phone in airplane mode.'))
-A(Spacer(1, 0.18 * inch))
-A(table([['Where it lives', 'What it needs'],
-         ['executivedezign.github.io/valley-view-trails/macro/',
-          'Any phone browser. Nothing else.']], [3.6 * inch, 2.9 * inch]))
-A(Spacer(1, 0.3 * inch))
-A(P('<b>Install it properly.</b> Open the link in Safari, then Share &rsaquo; Add to Home Screen. '
-    'That gives you an icon, full screen, and a copy cached on the phone so it opens without '
-    'a signal. Settings are remembered between sessions.', 'p'))
-A(P('Everything in this manual describes the app as built. The formulas are given in full at '
-    'the end, so nothing here has to be taken on trust.', 'cap'))
+A(Spacer(1, 0.24 * inch))
+P('Macro Exposure', 'title')
+P('How to use it &mdash; Canon EOS R5 with the Laowa macro set', 'sub')
 
-# ---------------------------------------------------------------- the idea
-A(PageBreak())
-A(P('The one idea', 'h1'))
-A(P('At macro magnifications the number on the aperture ring is close to fiction. Extending a '
-    'lens to focus close moves the aperture further from the sensor, and the light spreads out '
-    'over that extra distance. What reaches the sensor follows the <b>effective aperture</b>:'))
-A(P('N<sub>eff</sub> = N &times; (1 + m/P)', 'form'))
-A(P('where <i>N</i> is the marked f-number, <i>m</i> is magnification, and <i>P</i> is the '
-    'lens’s pupil magnification. The light lost, in stops, is 2 &times; log<sub>2</sub>(1 + m/P).'))
-A(P('Wide open, across your kit:'))
-A(table([['Lens', 'Magnification', 'Marked', 'Effective', 'Light lost'],
-         ['15mm f/4 Shift', '1:1', 'f/4', 'f/8', '2.0 stops'],
-         ['24mm f/14 Probe', '2:1', 'f/14', 'f/42', '3.2 stops'],
-         ['25mm Ultra', '2.5x', 'f/2.8', 'f/9.8', '3.6 stops'],
-         ['25mm Ultra', '5x', 'f/2.8', 'f/16.8', '5.2 stops'],
-         ['100mm f/2.8 APO', '2:1', 'f/2.8', 'f/7.3', '2.7 stops'],
-         ['180mm f/4.5 APO', '1.5x', 'f/4.5', 'f/11.2', '2.6 stops'],
-         ['Aurogon, NA 0.5', '20x', '—', 'f/21', '—'],
-         ['Aurogon, NA 0.5', '50x', '—', 'f/51', '—']],
-        [1.75 * inch, 1.25 * inch, 1.1 * inch, 1.15 * inch, 1.25 * inch]))
+P('You are in front of a subject. This tells you what to set, in what order, and '
+  'what to do with what the app says back.')
+
+P('The whole app exists because of one problem. When you focus close, your lens loses '
+  'light &mdash; a lot of it, and more the closer you get. Your camera hides this from you: the '
+  'ring still says f/2.8 while the sensor is getting f/7. Everything that goes wrong in macro '
+  'follows from that gap. Photos come out dark. Depth of field vanishes. Flash power is a '
+  'guess. Stacks come out soft no matter how carefully you focus.')
+
+P('The app closes the gap. You tell it which lens, how close you are, and where the ring is '
+  'set. It tells you what the sensor is really getting &mdash; and from that, how much will be '
+  'in focus, how far to move the rail, and how much flash you need.')
+
 A(Spacer(1, 0.1 * inch))
-A(P('The probe is the clearest case: f/14 is as wide as it opens, and at 2:1 that behaves like '
-    'f/42. Four stops darker than the barrel says. This is why open shade on that lens needs '
-    'ISO 3200 and it is not the meter being wrong.'))
+key('<b>If you read nothing else:</b><br/>'
+    '<b>1.</b> The number in big type on the Shoot tab is your <i>real</i> aperture. Ignore the '
+    'ring for every decision except where to physically set it.<br/>'
+    '<b>2.</b> Depth of field on the Stack tab is how much of your subject will be sharp. '
+    'If it is smaller than your subject, you are stacking or you are accepting soft.<br/>'
+    '<b>3.</b> Get one flash exposure right, save it as your baseline, and the app corrects '
+    'the power for you every time you change anything after that.')
 
-A(P('What the light loss does and does not mean', 'h2'))
-A(P('The R5 meters off the sensor. With a fully manual lens the meter is reading the light that '
-    '<i>actually arrived</i>, so the loss is already in what the camera shows you. <b>It is not a '
-    'correction to dial in.</b> Adding it again would overexpose by several stops.'))
-A(P('It matters for three other things, all of which the app handles:'))
-(bullets(['<b>Flash power</b> — manual flash cannot see through the lens, so the correction '
-            'is yours to make.',
-            '<b>ISO headroom</b> — knowing you are shooting at f/42 explains why ISO is climbing.',
-            '<b>Diffraction and depth of field</b> — both follow the effective aperture, '
-            'never the marked one.']))
-
-A(P('Why the 100mm is different', 'h2'))
-A(P('Most lenses are treated as symmetric, P = 1. The 100mm f/2.8 APO is not, and Laowa publishes '
-    'its real losses: 1.7 stops at 1:1 and 2.7 at 2x. Those two figures fix P = 1.29, which '
-    'reproduces both to within a twentieth of a stop and predicts everything in between. So that '
-    'lens is modelled from measured data rather than theory, and it loses about a third of a stop '
-    'less than the naive formula would claim.'))
-
-# ---------------------------------------------------------------- shoot
-A(PageBreak())
-A(P('The Shoot tab', 'h1'))
-A(P('Set three things: lens, magnification, aperture. Everything below updates.'))
-
-A(P('Lens', 'h2'))
-A(P('Six buttons. Choosing one loads that lens’s real limits, so the app will not offer you '
-    'f/4 on the probe or 3x on the 180mm — and magnification clamps into range if the new lens '
-    'cannot reach where you were.'))
-
-A(P('Magnification', 'h2'))
-A(P('A slider with a number field beside it. On the Aurogon it becomes four tube buttons, '
-    'since that lens only does 10x, 20x, 35x and 50x.'))
-
-A(P('Aperture', 'h2'))
-A(P('Stepped in thirds through the range that lens actually has. On the Aurogon it becomes NA '
-    'instead — eight detents from 0.5 to 0.15 — because a microscope objective is specified by '
-    'numerical aperture. The app converts it with the working f-number, (1 + m) / 2NA.'))
-
-A(P('What you get back', 'h2'))
-A(table([['Reading', 'What it tells you'],
-         ['Effective aperture', 'The headline figure, in the large type. What the sensor sees.'],
-         ['Light lost', 'How many stops separate that from the barrel marking.'],
-         ['Working distance', 'Front of lens to subject, at Laowa’s nearest documented '
-                              'magnification — the app names which one it used.'],
-         ['Airy disk', 'The diffraction blur diameter, in microns, against your 4.4 µm pixels.'],
-         ['Scene light', 'The ambient EV at ISO 100 implied by your ISO and shutter.'],
-         ['Handheld floor', 'The slowest shutter worth attempting, 1/(focal &times; (1 + m)). '
-                            'Shake is magnified along with the subject.']],
-        [1.6 * inch, 4.9 * inch]))
-
-A(P('Diffraction', 'h2'))
-A(P('Reported in three bands, not as a single threshold, because diffraction is not a cliff — '
-    'it costs resolution steadily long before anyone would call a print soft.'))
-(bullets(['<b>Not diffraction limited</b> — below about f/6.5 effective.',
-            '<b>Softening at 100%, invisible in a print</b> — roughly f/6.5 to f/22.',
-            '<b>Visible in print too</b> — past about f/22 effective.']))
-A(note('Every lens in your kit is at or past the first threshold <i>wide open</i> at working '
-       'magnification. That is not a fault and it is not avoidable. On this kit the question is '
-       'never whether you are diffracted, only which compromise you would rather have — which '
-       'is exactly the trade the Stack tab lets you price.'))
-
-
-# ---------------------------------------------------------------- stack
-A(PageBreak())
-A(P('The Stack tab', 'h1'))
-A(P('Depth of field at macro distances does not behave like the depth of field you are used to. '
-    'It follows:'))
-A(P('DoF = 2 &times; N<sub>eff</sub> &times; c / m<super>2</super>', 'form'))
-A(P('Note the <i>m</i> squared. Doubling magnification quarters your depth of field, and no '
-    'aperture on any of these lenses can buy that back.'))
-
-A(P('Which circle of confusion', 'h2'))
-A(P('The toggle offers two, and the choice is not cosmetic — it changes the answer roughly '
-    'threefold.'))
-(bullets(['<b>Print, 0.030 mm</b> — the traditional standard. Right if the picture ends up '
-            'on a wall or a screen at sensible size.',
-            '<b>Pixel level, 0.009 mm</b> — about two pixels on your 45 MP sensor. The honest '
-            'figure if you inspect at 100%, and the one to stack by if you want it critically '
-            'sharp everywhere.']))
-
-A(P('Rail step and frame count', 'h2'))
-A(P('Give it the depth of subject you need covered and it returns the step and the number of '
-    'frames. Step is depth of field less the overlap, defaulting to 30%.'))
-A(P('The overlap is not padding. Slices that merely touch leave visible banding where the sharp '
-    'zones meet, because the edge of a depth of field is a gradual thing rather than a line. '
-    'Thirty percent is the usual insurance; tighten it if a stack shows seams.'))
-
-A(P('A worked example', 'h2'))
-A(P('25mm Ultra at 5x, wide open at f/2.8, stacking a 3 mm subject:'))
-A(table([['', 'Print (0.030 mm)', 'Pixel level (0.009 mm)'],
-         ['Effective aperture', 'f/16.8', 'f/16.8'],
-         ['Depth of field', '40 µm', '12 µm'],
-         ['Rail step at 30%', '28 µm', '8.5 µm'],
-         ['Frames for 3 mm', '108', '356']],
-        [1.9 * inch, 2.3 * inch, 2.3 * inch], align_right=(1, 2)))
-A(Spacer(1, 0.08 * inch))
-A(P('Same subject, same settings, three times the work for the stricter standard. That is the '
-    'decision the toggle is there to let you make deliberately rather than by accident.'))
-A(note('The app warns when the step falls below about 5 µm, which is finer than most manual '
-       'rails resolve — on the Aurogon that happens immediately, and at 20x the step is '
-       'around 2 µm. That is motorised controller territory, not thumb and micrometer.'))
-
-# ---------------------------------------------------------------- flash
-A(PageBreak())
-A(P('The Flash tab', 'h1'))
-A(P('Five of your six lenses have no electronic contacts. The camera therefore has no aperture to '
-    'work from, TTL cannot compute a correct exposure, and you are on manual power whether you '
-    'wanted to be or not.'))
-A(P('Guide numbers do not rescue you either: they are quoted in metres, and at a 20 mm working '
-    'distance the arithmetic has left the range where it means anything.'))
-
-A(P('So the app works from a baseline', 'h2'))
-A(P('Get one frame right by eye. Then open the Flash tab, set <b>Power then</b> to the power you '
-    'used, and press <b>Save current as baseline</b>. It records the magnification, the effective '
-    'aperture and the ISO alongside it.'))
-A(P('From that point on, change anything you like. <b>Power now</b> tells you what to set, and by '
-    'how many stops the requirement moved:'))
-A(P('&Delta;stops = 2 &times; log<sub>2</sub>(N<sub>now</sub> / N<sub>base</sub>) '
-    '&minus; log<sub>2</sub>(ISO<sub>now</sub> / ISO<sub>base</sub>)', 'form'))
-A(P('Power is displayed the way the Godox units display it — a fraction plus thirds, so '
-    '&ldquo;1/4 +1/3&rdquo; is one third of a stop above quarter power.'))
-
-A(P('Example', 'h2'))
-A(P('Baseline: 100mm APO at 1:1, marked f/8, ISO 400, MF-12 twin at 1/16. Now you move to 2:1 '
-    'and leave everything else alone. Effective aperture goes from f/14.2 to f/20.4 — just '
-    'over a stop — so the app calls for 1/8. Nothing else on the camera changed, and nothing '
-    'on the camera would have told you.'))
-
-A(P('Shutter speed is deliberately not in that formula', 'h2'))
-A(P('This is the part that trips people up, so it is worth being explicit. <b>Shutter speed does '
-    'not affect flash exposure.</b> The pop lasts a fraction of a millisecond; below sync speed '
-    'the whole of it lands in the frame whether you are at 1/60 or 1/200.'))
-A(P('Shutter controls your <i>ambient</i> only. That is a feature: drag it to bring the background '
-    'up or shut it down, without touching how the flash renders your subject.'))
-A(note('<b>Sync is a hard wall.</b> The R5 syncs at 1/200 with the mechanical shutter and 1/250 '
-       'with electronic first curtain, and will not fire flash at all on the fully electronic '
-       'shutter. Go past it and a black band crosses the frame. The app refuses to hand you a '
-       'setting beyond that rather than letting you find out later.'))
-
-A(P('Continuous light', 'h2'))
-A(P('Selecting the LED option turns the power maths off, because there is nothing to calculate — '
-    'continuous light meters normally and the shutter is back in play. What the effective aperture '
-    'still costs you is output, and at f/17 or f/42 the Lume Cubes and RM03s will be working hard. '
-    'Expect long exposures on a rail.'))
-
-# ---------------------------------------------------------------- lens reference
-A(PageBreak())
-A(P('Lens quick reference', 'h1'))
-A(table([['Lens', 'Mag', 'Aperture', 'Working dist.', 'Contacts'],
-         ['15mm f/4 Shift', 'to 1:1', 'f/4–f/32', '5 mm at 1:1', 'None'],
-         ['24mm f/14 Probe', 'to 2:1', 'f/14–f/40', '20 mm at 2:1', 'None'],
-         ['25mm Ultra', '2.5–5x', 'f/2.8–f/16', '40–45 mm', 'None'],
-         ['100mm f/2.8 APO', 'to 2:1', 'f/2.8–f/22', '71 mm at 2x', '<b>Full</b>'],
-         ['180mm f/4.5 APO', 'to 1.5x', 'f/4.5–f/32', '147 mm at 1.5x', 'None'],
-         ['Aurogon', '10–50x', 'NA 0.5–0.15', '20 mm, fixed', 'None']],
-        [1.55 * inch, 0.85 * inch, 1.2 * inch, 1.45 * inch, 1.45 * inch]))
 A(Spacer(1, 0.12 * inch))
-A(P('Working distance is front of lens to subject — the one you can judge. Minimum focus '
-    'distance, quoted from the sensor plane, is always longer and less useful in the field. The '
-    'app shows both.'))
-A(P('The 100mm is the only lens here that meters, autoexposes, records EXIF and can drive TTL. '
-    'When something behaves unexpectedly, check which lens you are on first.'))
+P('Open it at <b>executivedezign.github.io/valley-view-trails/macro/</b>, then Share &rsaquo; '
+  'Add to Home Screen. It works with no signal and remembers your settings.', 'cap')
 
-A(P('Per-lens notes live in the app', 'h2'))
-A(P('The bottom of the Shoot tab carries that lens’s handling notes — which ones shadow '
-    'the subject, which need the hood removed, where IBIS must be switched off, which need the '
-    'focal length entered by hand. They are drawn from your own settings reference so the app and '
-    'your notes cannot disagree.'))
-
-A(P('Warnings you may see', 'h1'))
-(bullets(['<b>Past your ISO ceiling</b> — above 6400, the limit you set.',
-            '<b>Slower than the handheld floor</b> — fine on a rail. Handheld, let the flash '
-            'duration be your real shutter.',
-            '<b>Aurogon</b> — electronic shutter only, IBIS off, remote release, hands off '
-            'the camera entirely.',
-            '<b>No electronic contacts</b> — on five of the six lenses nothing about the '
-            'exposure reaches EXIF. Write it down if it matters.']))
-
-A(P('Troubleshooting', 'h1'))
-A(P('<b>The effective aperture looks alarming.</b> It is meant to. f/42 on the probe is correct, '
-    'not a bug — it is the reason that lens needs so much light.'))
-A(P('<b>It says I am diffracted wide open.</b> On this kit you usually are. Choose for depth of '
-    'field instead and accept the softening; a stacked, slightly diffracted frame beats a sharp '
-    'one with nothing in focus.'))
-A(P('<b>The frame count is enormous.</b> Switch the circle of confusion to print, or stop down and '
-    'take the diffraction. Both are legitimate, and the app shows what each costs.'))
-A(P('<b>Flash power says beyond full.</b> You have run out of light. Raise ISO, open up, or move '
-    'the heads closer — halving the distance is worth two stops.'))
-A(P('<b>Nothing appears in EXIF.</b> Expected on five of six lenses. There are no contacts to '
-    'carry it.'))
-
-# ---------------------------------------------------------------- formulas
+# ================================================================ step 1
 A(PageBreak())
-A(P('The formulas, in full', 'h1'))
-A(P('Nothing in the app is hidden. Every number on the screen comes from one of these.'))
+P('First: how close am I?', 'h1')
+P('Everything in the app starts with magnification, and nobody can eyeball that. '
+  'Here is the trick &mdash; magnification is just how wide your frame is.', 'kick')
 
-A(P('Effective aperture', 'h2'))
-A(P('N<sub>eff</sub> = N &times; (1 + m/P)', 'form'))
-A(P('P = 1 for a symmetric lens, 1.29 for the 100mm APO, fitted to Laowa’s published losses.'))
+P('Your sensor is 36 mm across. At 1x the frame is 36 mm wide. At 2x it is 18 mm. So look at '
+  'your subject and ask how wide a strip of the world you are covering.')
 
-A(P('Light lost', 'h2'))
-A(P('stops = 2 &times; log<sub>2</sub>(1 + m/P)', 'form'))
+table([['Set the app to', 'Frame is this wide', 'Which means'],
+       ['0.5x', '72 mm', 'A small frog, a hawk moth, a whole large butterfly'],
+       ['1x', '36 mm', 'A big beetle or dragonfly filling the frame'],
+       ['1.5x', '24 mm', 'A honeybee with room around it'],
+       ['2x', '18 mm', 'A honeybee filling the frame; a large beetle'],
+       ['2.5x', '14 mm', 'A bumblebee head-on; a big hoverfly'],
+       ['5x', '7 mm', 'A housefly filling the frame; a ladybird with room'],
+       ['10x', '3.6 mm', 'An ant filling the frame; a large aphid'],
+       ['20x', '1.8 mm', 'An aphid filling the frame; a springtail'],
+       ['35x', '1 mm', 'A mite; part of a compound eye'],
+       ['50x', '0.7 mm', 'Pollen grains; individual eye facets']],
+      [1.2 * inch, 1.35 * inch, 3.95 * inch], align=(0, 1))
 
-A(P('Aurogon working f-number', 'h2'))
-A(P('N<sub>eff</sub> = (1 + m) / (2 &times; NA)', 'form'))
+A(Spacer(1, 0.08 * inch))
+P('Do not agonise over it. Being off by a tenth changes nothing that matters. If the fly fills '
+  'your frame, you are at 5x &mdash; type 5 and move on.')
 
-A(P('Depth of field', 'h2'))
-A(P('DoF = 2 &times; N<sub>eff</sub> &times; c / m<super>2</super>', 'form'))
-A(P('c = 0.030 mm for print, 0.009 mm at pixel level on the R5’s 45 MP sensor.'))
+P('Which lens for which subject', 'h2')
+table([['Subject', 'Lens', 'Why'],
+       ['Anything alive and jumpy', '180mm APO',
+        'Nearly 6 inches of working distance at 1.5x. You can get the shot without '
+        'casting a shadow on it or spooking it.'],
+       ['Live insects, general work', '100mm APO',
+        'The only lens that meters and autoexposes. Easiest of the set, and 2&frac12; inches '
+        'of room at 1:1.'],
+       ['Very small, on a rail', '25mm Ultra',
+        '2.5x to 5x. Nothing living will hold still for this &mdash; assume tripod and stack.'],
+       ['Habitat with the subject in it', '15mm Shift',
+        'Subject plus its whole surroundings. But 5 mm of working distance means your '
+        'lens is nearly touching it.'],
+       ['Into a hole, or underwater', '24mm Probe',
+        'The only one that goes places. Very dark &mdash; see its own page.'],
+       ['Dead or preserved specimens', 'Aurogon',
+        '10x and up. Lab work, motorised rail, nothing alive.']],
+      [1.65 * inch, 1.1 * inch, 3.75 * inch])
 
-A(P('Rail step and frames', 'h2'))
-A(P('step = DoF &times; (1 &minus; overlap)<br/>frames = ceiling(depth / step) + 1', 'form'))
+# ================================================================ step 2
+A(PageBreak())
+P('Second: where do I set the aperture ring?', 'h1')
+P('This is the question the app really answers. Here is the short version so you do not '
+  'have to work it out in the field.', 'kick')
 
-A(P('Diffraction', 'h2'))
-A(P('Airy diameter = 2.44 &times; &lambda; &times; N<sub>eff</sub>,&nbsp;&nbsp;&lambda; = 550 nm', 'form'))
-A(P('Compared against the R5 pixel pitch of 4.39 µm, and against the print circle of '
-    'confusion for the second threshold.'))
+P('Stopping down normally buys you depth of field. In macro it also multiplies the light loss '
+  'and blurs the whole frame by diffraction &mdash; so past a point, stopping down makes the '
+  'picture <i>worse</i> while feeling like it should help. Where that point sits depends on how '
+  'close you are, which is why there is no single answer.')
 
-A(P('Flash power change', 'h2'))
-A(P('&Delta;stops = 2 &times; log<sub>2</sub>(N<sub>now</sub>/N<sub>base</sub>) '
-    '&minus; log<sub>2</sub>(ISO<sub>now</sub>/ISO<sub>base</sub>)', 'form'))
+P('Two honest choices, depending on what you are doing:')
 
-A(P('Handheld floor', 'h2'))
-A(P('shutter = 1 / (focal length &times; (1 + m))', 'form'))
+table([['Lens and magnification', 'One frame, handheld', 'Stacking on a rail'],
+       ['15mm Shift at 1:1', 'f/11', 'f/5.6'],
+       ['24mm Probe at 2:1', 'f/14 &mdash; no choice', 'f/14 &mdash; no choice'],
+       ['25mm Ultra at 2.5x', 'f/6.3', 'f/3.2'],
+       ['25mm Ultra at 5x', 'f/3.5', 'f/2.8'],
+       ['100mm APO at 1:1', 'f/13', 'f/6.3'],
+       ['100mm APO at 2:1', 'f/9', 'f/4.5'],
+       ['180mm APO at 1.5x', 'f/9', 'f/4.5'],
+       ['Aurogon, any', 'NA 0.5', 'NA 0.5']],
+      [2.3 * inch, 2.1 * inch, 2.1 * inch], align=(1, 2))
 
-A(P('Scene light', 'h2'))
-A(P('EV<sub>100</sub> = log<sub>2</sub>(N<sub>eff</sub><super>2</super> / t) '
-    '&minus; log<sub>2</sub>(ISO / 100)', 'form'))
+A(Spacer(1, 0.08 * inch))
+P('<b>Handheld column:</b> you get one frame, so you need every scrap of depth and you accept '
+  'the softening that comes with it. A slightly soft photo with the whole insect in it beats a '
+  'crisp one with only an antenna sharp.')
+P('<b>Stacking column:</b> you are taking fifty frames anyway, so each one should be as sharp as '
+  'it can be. Depth comes from the stack, not the aperture. Open up, take more slices.')
 
-A(Spacer(1, 0.25 * inch))
-A(P('Camera figures used throughout: Canon EOS R5, 45 MP full frame, 4.39 µm pixel pitch, '
-    'flash sync 1/200 mechanical and 1/250 with electronic first curtain, shutter 30 s to '
-    '1/8000, ISO 100–51200. Lens specifications are taken from the owner’s Laowa and R5 '
-    'settings reference.', 'cap'))
+note('<b>The probe is a special case.</b> f/14 is as wide as it opens, and at 2:1 that behaves '
+     'like f/42. There is no decision to make &mdash; you are always wide open, always diffracted, '
+     'always short of light. Plan for ISO 3200 and a light on it.')
+
+P('If you are between magnifications, or on a lens and magnification not in the table, the app '
+  'does it live: set the lens, magnification and aperture, and watch the big number. Keep it '
+  'near <b>f/11</b> for stacking, and up to about <b>f/22</b> for a single handheld frame.')
+
+# ================================================================ recipe: live insect
+A(PageBreak())
+P('Live insect, handheld, with flash', 'h1')
+P('The bread-and-butter shot. 100mm or 180mm, twin flash, something that will not wait.', 'kick')
+
+P('Set the camera once', 'h2')
+bullets(['Mode <b>M</b>. Shutter <b>1/200</b>. ISO <b>400</b>.',
+         'Flash on <b>manual</b> power, not TTL. Diffuser on.',
+         'Electronic first curtain. MF peaking on. IS on (enter the focal length by hand '
+         'on everything except the 100mm).'])
+P('The shutter speed is not doing what you think. At 1/200 with flash in the dark, the flash '
+  'burst is so brief that <i>it</i> is your real shutter &mdash; it freezes the insect and your '
+  'own shake. That is why handheld at 2x is possible at all. Do not go faster than 1/200 '
+  'looking for sharpness; you will just get a black band.')
+
+P('Then, once', 'h2')
+steps(['Frame your subject and read the width off the table on page 2. Type that '
+       'magnification into the app.',
+       'Set the ring where the table on page 3 says &mdash; f/13 for a 1:1 shot on the 100mm.',
+       'Take a frame. Look at it. Adjust flash power until the exposure is right. '
+       'Start around <b>1/32</b> and work from there.',
+       'Open the <b>Flash</b> tab, set <b>Power then</b> to the power that worked, and press '
+       '<b>Save current as baseline</b>.'])
+
+key('That baseline is the whole point. From now on, when you move to 2x or change the '
+    'aperture, glance at <b>Power now</b> and it tells you what to set the flash to. No test '
+    'frames, no chimping, no working it out while the insect leaves.')
+
+P('While you shoot', 'h2')
+bullets(['<b>Changed magnification or aperture?</b> Check Power now. Usually it is a stop or so.',
+         '<b>Want to know what will be sharp?</b> Stack tab, top number. At 1:1 and f/13 you '
+         'have about 1.4 mm of depth &mdash; enough for an eye and not much else, so focus '
+         'on the eye and let the rest go.',
+         '<b>Nothing is sharp at all?</b> You are probably closer than you think. Depth of '
+         'field falls off a cliff past 1:1.'])
+
+note('<b>Twin flash arm position matters as much as power.</b> The app cannot see where your '
+     'heads are pointed. If you move them significantly closer or further from the subject, '
+     'your baseline is stale &mdash; take one test frame and save it again.')
+
+# ================================================================ recipe: stacking
+A(PageBreak())
+P('Stacking on a rail', 'h1')
+P('Anything that will hold still. This is where the app saves you the most work.', 'kick')
+
+P('Set up', 'h2')
+bullets(['Rail clamped to something heavy. <b>IBIS off</b> &mdash; on a rail it drifts the frame '
+         'between slices and ruins the stack.',
+         'Electronic first curtain, or fully electronic on the Aurogon. 2-second timer or a '
+         'remote. Do not touch the camera.',
+         'Aperture from the <b>stacking</b> column on page 3. Wider than feels right. Trust it.'])
+
+P('Work out the slices', 'h2')
+steps(['Set the lens and magnification in the app as usual.',
+       'Guess how deep your subject is, front to back, in millimetres. A ladybird is about '
+       '4 mm. A bee, maybe 8 mm through the thorax. Round up.',
+       'Open the <b>Stack</b> tab and type that into <b>Subject depth</b>.',
+       'It gives you a <b>rail step</b> and a <b>frame count</b>. Advance the rail by that '
+       'step, that many times.'])
+
+P('Print or pixel level?', 'h2')
+P('The toggle changes the answer by about three times, so it is worth understanding once.')
+bullets(['<b>Print</b> &mdash; you want a good photograph. Fewer frames, sharp at any normal '
+         'viewing size.',
+         '<b>Pixel level</b> &mdash; you want it critically sharp at 100% on screen, the way '
+         'people pixel-peep macro. Three times the frames.'])
+P('For a 3 mm subject at 5x, that is 108 frames against 356. Both are legitimate; just decide '
+  'which one you are doing before you start, rather than discovering it afterwards.')
+
+P('If the numbers look impossible', 'h2')
+table([['Problem', 'What to do'],
+       ['Hundreds of frames', 'Switch to the print standard, or stop down a little and accept '
+                              'the softening. Both roughly halve the count.'],
+       ['Step is a few microns',
+        'Beyond a manual rail. Either drop to a lower magnification or use a motorised '
+        'controller. On the Aurogon this is normal.'],
+       ['Stack has visible bands',
+        'Your slices did not overlap enough. Raise the overlap from 30% to 40% and redo it.']],
+      [1.9 * inch, 4.6 * inch])
+
+note('None of the Laowa lenses support the R5&rsquo;s in-camera focus bracketing &mdash; there '
+     'is no focus motor for the camera to drive. The rail is the only way, which is exactly '
+     'why the step number is worth having.')
+
+# ================================================================ recipe: dark lenses
+A(PageBreak())
+P('The probe, and other dark situations', 'h1')
+P('When there simply is not enough light and no aperture will fix it.', 'kick')
+
+P('The 24mm probe at 2:1 behaves like f/42. That is roughly four stops darker than the ring '
+  'suggests, and there is no wider setting. The 25mm at 5x is nearly as bad, at f/17 with the '
+  'ring wide open.')
+
+P('What that means in practice:')
+bullets(['<b>Supplemental light is not optional.</b> The LED ring on the probe, or twin flash. '
+          'Open shade with no light source will not get there.',
+         '<b>ISO 3200 is a normal working value</b> on these, not a failure. Your R5 handles it.',
+         '<b>Set the ring wide open and leave it.</b> There is nothing to gain by stopping down '
+          'when you are already at f/42 effective.',
+         '<b>Watch your own shadow.</b> At 20 mm working distance the lens blocks the light it '
+          'needs. This is why the probe has a ring light built into the front.'])
+
+P('Aurogon: 10x and beyond', 'h2')
+bullets(['<b>NA 0.5 &mdash; widest &mdash; always.</b> It is your main light-gathering control, and '
+         'stopping down costs resolution you cannot get back.',
+         '<b>Fully electronic shutter, IBIS off, remote release.</b> At these magnifications a '
+         'footstep across the room shows up.',
+         '<b>Stacking is not optional.</b> At 20x you have about 3 microns of depth. Nothing is '
+         'ever in focus in a single frame.',
+         '<b>10x works outdoors on a tripod. 20x needs still air. 35x and 50x are indoor work '
+         'on dead specimens</b> &mdash; do not fight this.'])
+
+P('Continuous light instead of flash', 'h2')
+P('With the Lume Cubes or the RM03 panels, select <b>Continuous LED</b> on the Flash tab and the '
+  'power maths switches off &mdash; there is nothing to calculate, because your camera meter '
+  'reads continuous light correctly.')
+P('What does not go away is the light loss. At f/17 or f/42 effective, those panels are working '
+  'hard, and you will be into exposures long enough to need the tripod. That is fine for a '
+  'specimen and hopeless for anything alive.')
+
+# ================================================================ troubleshooting
+A(PageBreak())
+P('When something looks wrong', 'h1')
+P('Symptom first, since that is how you meet the problem.', 'kick')
+
+table([['What you are seeing', 'What it is', 'Fix'],
+       ['Photos are far too dark',
+        'The light loss. You are shooting at several stops less than the ring says.',
+        'Check the big number on Shoot. Add light, raise ISO, or get closer with the flash.'],
+       ['Black band across the frame',
+        'You went past flash sync.',
+        '1/200 or slower. 1/250 only with electronic first curtain. Flash never fires on '
+        'the fully electronic shutter.'],
+       ['Almost nothing is in focus',
+        'Depth of field is thinner than your subject.',
+        'Stack tab tells you how thin. Either stack it, or back off to a lower '
+        'magnification where there is more depth.'],
+       ['Soft everywhere, even stacked',
+        'Diffraction. You stopped down too far.',
+        'Open up to the stacking column on page 3 and take more slices instead.'],
+       ['Handheld shots are smeared',
+        'Shutter, or the subject moving.',
+        'Use flash and let the burst freeze it. Shutter speed alone will not save you '
+        'at magnification.'],
+       ['Flash exposure keeps drifting',
+        'Your baseline is stale.',
+        'Save a fresh one whenever you move the heads or change lenses.'],
+       ['Frame drifts between stack slices',
+        'IBIS is on.',
+        'Turn it off whenever the camera is on a rail.'],
+       ['No aperture recorded in the file',
+        'Five of six lenses have no electrical contacts.',
+        'Expected. Nothing to fix &mdash; note it yourself if it matters.'],
+       ['Camera will not fire at all',
+        'It thinks no lens is attached.',
+        'Custom Functions &rsaquo; Release shutter without lens &rsaquo; Enable. '
+        'Needed on every lens except the 100mm.']],
+      [1.65 * inch, 1.85 * inch, 3.0 * inch])
+
+P('What the app&rsquo;s warnings are telling you', 'h1')
+table([['If the app says', 'Do this'],
+       ['Not diffraction limited', 'Nothing. You have room to stop down further if you want depth.'],
+       ['Softening at 100%, invisible in a print',
+        'Carry on. This is the normal working state for macro and prints fine.'],
+       ['Diffraction visible in print',
+        'Only accept this on a single handheld frame where you need the depth. '
+        'If you are stacking, open up.'],
+       ['Past your ISO ceiling', 'Add light or open up before you raise ISO further.'],
+       ['Slower than the handheld floor',
+        'Either get on a tripod, or use flash and let the flash freeze it.']],
+      [2.35 * inch, 4.15 * inch])
+
+
+# ================================================================ appendix
+A(PageBreak())
+P('Appendix: the arithmetic', 'h1')
+P('Only if you want it. Nothing here is needed to use the app.', 'kick')
+
+P('<b>Effective aperture.</b> N<sub>eff</sub> = N &times; (1 + m/P), where N is the marked '
+  'f-number, m is magnification, and P is pupil magnification &mdash; 1 for a symmetric lens, '
+  '1.29 for the 100mm APO, fitted to the losses Laowa publishes for it (1.7 stops at 1:1, 2.7 '
+  'at 2x). Light lost in stops is 2 &times; log<sub>2</sub>(1 + m/P).')
+
+P('<b>Aurogon.</b> Specified by numerical aperture, so the working f-number is '
+  '(1 + m) / (2 &times; NA).')
+
+P('<b>Depth of field.</b> 2 &times; N<sub>eff</sub> &times; c / m<super>2</super>, with c the '
+  'circle of confusion &mdash; 0.030 mm for print, 0.009 mm at pixel level on 45 MP. Note the m '
+  'squared: double the magnification and depth of field quarters.')
+
+P('<b>Rail step.</b> Depth of field less the overlap. Frames = depth &divide; step, plus one.')
+
+P('<b>Diffraction.</b> The Airy disk is 2.44 &times; &lambda; &times; N<sub>eff</sub> across, at '
+  '&lambda; = 550 nm, compared against the R5&rsquo;s 4.39 &micro;m pixels for the first '
+  'threshold and the print circle of confusion for the second.')
+
+P('<b>Flash power.</b> &Delta;stops = 2 &times; log<sub>2</sub>(N<sub>now</sub>/N<sub>base</sub>) '
+  '&minus; log<sub>2</sub>(ISO<sub>now</sub>/ISO<sub>base</sub>). Shutter speed is absent because '
+  'below sync the whole flash lands in the frame regardless &mdash; shutter controls ambient only.')
+
+P('<b>Handheld floor.</b> 1 / (focal length &times; (1 + m)). Magnification amplifies your shake '
+  'along with the subject.')
+
+A(Spacer(1, 0.2 * inch))
+P('Canon EOS R5: 45 MP full frame, 4.39 &micro;m pixels, flash sync 1/200 mechanical and 1/250 '
+  'with electronic first curtain, 30 s to 1/8000, ISO 100&ndash;51200. Lens figures are from the '
+  'owner&rsquo;s Laowa and R5 settings reference.', 'cap')
 
 doc = SimpleDocTemplate(OUT, pagesize=LETTER,
                         leftMargin=1 * inch, rightMargin=1 * inch,
                         topMargin=0.95 * inch, bottomMargin=0.85 * inch,
-                        title='Macro Exposure — Field Manual',
-                        author='Nature’s Hidden Worlds',
+                        title='Macro Exposure — How to use it',
                         subject='Canon EOS R5 with the Laowa macro set')
 doc.build(story, onFirstPage=chrome, onLaterPages=chrome)
 print('wrote', OUT)
