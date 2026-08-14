@@ -1,4 +1,4 @@
-const C='macroexp-v1',F=['.','index.html','manifest.json',
+const C='macroexp-v2',F=['.','index.html','manifest.json',
   'icon-180.png','icon-192.png','icon-512.png','favicon-32.png'];
 self.addEventListener('install',e=>{self.skipWaiting();
   e.waitUntil(caches.open(C).then(c=>c.addAll(F)).catch(()=>{}))});
