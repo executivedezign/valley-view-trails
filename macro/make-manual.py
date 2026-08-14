@@ -243,6 +243,45 @@ P('If you are between magnifications, or on a lens and magnification not in the 
   'does it live: set the lens, magnification and aperture, and watch the big number. Keep it '
   'near <b>f/11</b> for stacking, and up to about <b>f/22</b> for a single handheld frame.')
 
+# ================================================================ balance
+A(PageBreak())
+P('Changing one thing without ruining the exposure', 'h1')
+P('The Balance tab. Get one exposure right, and it keeps you there.', 'kick')
+
+P('Set up a shot that is correctly exposed &mdash; by the meter, the histogram, or your eye. '
+  'Go to <b>Balance</b> and press <b>Lock the current exposure</b>. That is now your reference.')
+
+P('From then on, change whatever you like. Open the ring for a softer background, move closer, '
+  'raise the shutter to kill a shake. The tab tells you how many stops you just gained or lost, '
+  'and exactly what to set to get back to level.')
+
+P('Pick which control absorbs it', 'h2')
+bullets(['<b>ISO</b> &mdash; the default, and usually right handheld. Nothing else about the '
+         'picture changes.',
+         '<b>Shutter</b> &mdash; right on a tripod with a still subject, where a slower speed '
+         'costs you nothing.',
+         '<b>Aperture</b> &mdash; only when you can spare the depth of field. On this kit you '
+         'usually cannot.'])
+
+key('<b>The part that is specific to macro:</b> moving closer is itself an exposure change. '
+    'Go from 1:1 to 2:1 on the 100mm and you have lost <b>a full stop</b> without touching a '
+    'single dial &mdash; the lens is simply passing less light. Balance sees it, because it '
+    'works from the real aperture rather than the ring. Nothing on your camera will tell you '
+    'this, and it is the single most common reason a second frame comes out darker than the '
+    'first.')
+
+P('Worked example', 'h2')
+P('You lock a good frame: 100mm at 1:1, ring on f/8, 1/125, ISO 400. Then you decide the '
+  'background is too busy and open the ring to f/4. Balance says you are <b>2 stops brighter</b> '
+  'and offers 1/500, or ISO 100, or back to f/8 &mdash; take whichever you can spare.')
+P('Later you move in to 2:1 and change nothing else. Balance says <b>1 stop darker</b>, and '
+  'ISO 800 puts you back. That stop came from the magnification alone.')
+
+note('With flash, Balance is working on your <b>ambient</b> light &mdash; the background, the '
+     'daylight, whatever is there without the pop. The flash itself does not follow the shutter '
+     'at all, so use the Flash tab for that. Two separate exposures, sharing an aperture and '
+     'an ISO.')
+
 # ================================================================ recipe: live insect
 A(PageBreak())
 P('Live insect, handheld, with flash', 'h1')
