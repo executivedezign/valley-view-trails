@@ -71,6 +71,21 @@ def load_for_analysis(path: str) -> np.ndarray:
         return np.asarray(im, dtype=np.float32) / 255.0
 
 
+def _hue_degrees(pixels: np.ndarray) -> np.ndarray:
+    """Hue (0-360) for an (N, 3) float RGB array; only meaningful where
+    saturation is non-trivial."""
+    r, g, b = pixels[:, 0], pixels[:, 1], pixels[:, 2]
+    maxc = pixels.max(axis=1)
+    delta = maxc - pixels.min(axis=1)
+    delta = np.where(delta < 1e-6, 1e-6, delta)
+    h = np.select(
+        [maxc == r, maxc == g],
+        [((g - b) / delta) % 6.0, (b - r) / delta + 2.0],
+        default=(r - g) / delta + 4.0,
+    )
+    return h * 60.0
+
+
 def analyze(rgb: np.ndarray, strength: float = 1.0) -> Settings:
     """Measure the image and propose corrections.
 
@@ -84,11 +99,36 @@ def analyze(rgb: np.ndarray, strength: float = 1.0) -> Settings:
 
     p005, p25, p75, p995 = np.percentile(lum, [0.5, 25.0, 75.0, 99.5])
 
+    # --- Scene character, measured before deciding anything -------------
+    # A frame dominated by one strong hue (a flower filling the frame, a
+    # sunset, stage light) looks like a huge color cast to gray-world
+    # averaging, but it is the subject, not a cast. Detect that case and
+    # protect the color; tone moves are also softened because such photos
+    # tend to be deliberately soft or dark.
+    maxc = rgb.max(axis=-1)
+    minc = rgb.min(axis=-1)
+    sat = np.where(maxc > 1e-4, (maxc - minc) / np.maximum(maxc, 1e-4), 0.0)
+    colorful = sat > 0.4
+    colorful_frac = float(np.mean(colorful))
+    dominant_hue_frac = 0.0
+    if colorful_frac > 0.05:
+        hist, _ = np.histogram(_hue_degrees(rgb[colorful]),
+                               bins=12, range=(0.0, 360.0))
+        smoothed = hist + np.roll(hist, 1) + np.roll(hist, -1)
+        dominant_hue_frac = float(smoothed.max()) / max(float(hist.sum()), 1.0)
+    intentional_color = colorful_frac > 0.35 and dominant_hue_frac > 0.6
+    tone_scale = 0.5 if intentional_color else 1.0
+    # The more saturated the scene overall, the less gray-world can be
+    # trusted, so white balance fades out as colorfulness rises.
+    mean_sat_all = float(np.mean(sat))
+    wb_scale = 0.0 if intentional_color else float(
+        np.clip(1.0 - (mean_sat_all - 0.15) / 0.35, 0.0, 1.0))
+
     # Exposure: aim the linearized median at a mid-gray of ~0.14
     # (about 0.42 in gamma-encoded terms).
     median_linear = float(np.median(lum)) ** 2.2
     ev = 0.6 * np.log2(0.14 / max(median_linear, 1e-4))
-    ev = float(np.clip(ev * strength, -2.5, 2.5))
+    ev = float(np.clip(ev * strength * tone_scale, -2.5, 2.5))
     if abs(ev) >= 0.10:
         s.exposure = round(ev, 2)
 
@@ -96,46 +136,50 @@ def analyze(rgb: np.ndarray, strength: float = 1.0) -> Settings:
     hi_clip = float(np.mean(lum > 0.98))
     lo_clip = float(np.mean(lum < 0.02))
     if hi_clip > 0.004:
-        s.highlights = -int(np.clip(round(1600 * hi_clip * strength), 0, 70))
+        s.highlights = -int(np.clip(round(1600 * hi_clip * strength * tone_scale),
+                                    0, 70))
     if lo_clip > 0.004:
-        s.shadows = int(np.clip(round(1400 * lo_clip * strength), 0, 70))
+        s.shadows = int(np.clip(round(1400 * lo_clip * strength * tone_scale),
+                                0, 70))
 
     # Whites/Blacks stretch a flat histogram toward the endpoints.
     if p995 < 0.93:
-        s.whites = int(np.clip(round((0.93 - p995) * 140 * strength), 0, 35))
+        s.whites = int(np.clip(round((0.93 - p995) * 140 * strength * tone_scale),
+                               0, 35))
     if p005 > 0.05:
-        s.blacks = -int(np.clip(round((p005 - 0.05) * 160 * strength), 0, 35))
+        s.blacks = -int(np.clip(round((p005 - 0.05) * 160 * strength * tone_scale),
+                                0, 35))
 
     # Contrast from the interquartile spread of luminance.
     spread = p75 - p25
-    contrast = round((0.36 - spread) * 110 * strength)
+    contrast = round((0.36 - spread) * 110 * strength * tone_scale)
     if abs(contrast) >= 4:
         s.contrast = int(np.clip(contrast, -25, 25))
 
-    # White balance: gray-world over midtones, ignoring near-clipped pixels.
-    midtones = (lum > 0.15) & (lum < 0.85) & (rgb.max(axis=-1) < 0.97)
+    # White balance: gray-world over midtones, ignoring near-clipped pixels,
+    # faded by wb_scale so colorful scenes keep their color.
+    midtones = (lum > 0.15) & (lum < 0.85) & (maxc < 0.97)
     if np.count_nonzero(midtones) < 500:
         midtones = np.ones(lum.shape, dtype=bool)
     rm = float(np.mean(r[midtones]))
     gm = float(np.mean(g[midtones]))
     bm = float(np.mean(b[midtones]))
     neutral = (rm + gm + bm) / 3.0
-    if neutral > 1e-4:
+    if neutral > 1e-4 and wb_scale > 0.0:
         cast_rb = (rm - bm) / neutral        # > 0: warm cast
         cast_green = (gm - (rm + bm) / 2.0) / neutral  # > 0: green cast
-        if abs(cast_rb) > 0.015:
+        temp = round(cast_rb * 180 * strength * wb_scale)
+        tint = round(cast_green * 180 * strength * wb_scale)
+        if abs(cast_rb) > 0.015 and temp:
             # Correct opposite to the cast; positive slider = warmer.
-            s.temperature = -int(np.clip(round(cast_rb * 180 * strength), -45, 45))
-        if abs(cast_green) > 0.015:
+            s.temperature = -int(np.clip(temp, -45, 45))
+        if abs(cast_green) > 0.015 and tint:
             # Positive slider = magenta, which corrects a green cast.
-            s.tint = int(np.clip(round(cast_green * 180 * strength), -45, 45))
+            s.tint = int(np.clip(tint, -45, 45))
 
-    # Vibrance for washed-out color.
-    maxc = rgb.max(axis=-1)
-    minc = rgb.min(axis=-1)
-    sat = np.where(maxc > 1e-4, (maxc - minc) / np.maximum(maxc, 1e-4), 0.0)
+    # Vibrance for washed-out color (never for an intentionally colorful scene).
     mean_sat = float(np.mean(sat[midtones]))
-    if mean_sat < 0.25:
+    if mean_sat < 0.25 and not intentional_color:
         s.vibrance = int(np.clip(round((0.28 - mean_sat) * 90 * strength), 0, 25))
 
     return s
