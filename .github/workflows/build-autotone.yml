@@ -7,6 +7,9 @@ on:
       - ".github/workflows/build-autotone.yml"
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build-windows:
     runs-on: windows-latest
@@ -41,3 +44,15 @@ jobs:
         with:
           name: autotone-windows
           path: tools/autotone/dist/autotone.exe
+
+      - name: Publish to the autotone release (stable download link)
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view autotone 2>$null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create autotone --title "autotone (latest build)" `
+              --notes "Windows app that analyzes JPEGs and embeds per-image Lightroom corrections. Always the latest build. Download autotone.exe below."
+          }
+          gh release upload autotone tools/autotone/dist/autotone.exe --clobber
