@@ -2,20 +2,16 @@
 """autotone — analyze JPEG photos and write per-image corrections.
 
 For each JPEG, autotone measures exposure, contrast, color cast, and
-saturation, then:
-
-  * embeds Lightroom develop settings (Camera Raw / Process 2012) as XMP
-    metadata inside the JPEG, so Lightroom 5+ applies the corrections at
-    import (or via Metadata > Read Metadata from File), and
-  * optionally writes a Photoshop curves file (.acv) next to the image,
-    loadable in the Curves dialog of Photoshop 6 (2000) and later.
+saturation, then embeds Lightroom develop settings (Camera Raw /
+Process 2012) as XMP metadata inside the JPEG, so Lightroom 5+ applies
+the corrections at import (or via Metadata > Read Metadata from File).
 
 Only the metadata block of the JPEG is touched; image pixels are never
 recompressed. Usage:
 
-    python autotone.py PHOTOS_DIR                 # embed XMP in place
-    python autotone.py PHOTOS_DIR --report        # analyze only, change nothing
-    python autotone.py PHOTOS_DIR --acv --backup  # also write .acv, keep .orig copies
+    python autotone.py PHOTOS_DIR             # embed XMP in place
+    python autotone.py PHOTOS_DIR --report    # analyze only, change nothing
+    python autotone.py PHOTOS_DIR --backup    # keep untouched .orig copies
 """
 
 from __future__ import annotations
@@ -297,67 +293,6 @@ def embed_xmp(path: str, settings: Settings, backup: bool = False) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Photoshop 6 output: .acv curves file
-# ---------------------------------------------------------------------------
-
-def _tone_curve_points(s: Settings) -> list[tuple[int, int]]:
-    """Master curve approximating exposure/contrast/blacks/whites."""
-    gain = 2.0 ** (s.exposure / 2.2)  # exposure applied in gamma space
-    black_in = max(0.0, -s.blacks / 100.0 * 0.25)
-    white_in = 1.0 - max(0.0, s.whites / 100.0 * 0.25)
-    c = s.contrast / 100.0
-
-    def f(x: float) -> float:
-        y = x * gain
-        y = (y - black_in) / max(white_in - black_in, 1e-3)
-        y = min(max(y, 0.0), 1.0)
-        if c:
-            y = y + c * (y - 0.5) * (1.0 - abs(2.0 * y - 1.0))  # gentle S-curve
-        return min(max(y, 0.0), 1.0)
-
-    points = []
-    for x in (0, 32, 64, 96, 128, 160, 192, 224, 255):
-        out = round(f(x / 255.0) * 255)
-        if points and out <= points[-1][1]:
-            out = min(255, points[-1][1] + 1)  # keep the curve monotonic
-        points.append((x, out))
-    return points
-
-
-def _channel_curve_points(gain: float) -> list[tuple[int, int]]:
-    mid = int(min(max(round(128 * gain), 1), 254))
-    return [(0, 0), (128, mid), (255, 255)]
-
-
-def write_acv(path: str, s: Settings) -> None:
-    """Write a Photoshop .acv (curves) file implementing the corrections.
-
-    Format: big-endian; version (2 bytes) = 4, curve count (2 bytes), then
-    each curve as a point count followed by (output, input) byte pairs as
-    16-bit values. Curve order: composite, red, green, blue. Loadable via
-    the Curves dialog's Load button in Photoshop 6 and later.
-    """
-    # Map temperature/tint back to mild per-channel gains.
-    r_gain = 1.0 + s.temperature / 400.0 - s.tint / 800.0
-    b_gain = 1.0 - s.temperature / 400.0 - s.tint / 800.0
-    g_gain = 1.0 + s.tint / 400.0
-
-    curves = [
-        _tone_curve_points(s),
-        _channel_curve_points(r_gain),
-        _channel_curve_points(g_gain),
-        _channel_curve_points(b_gain),
-    ]
-    buf = struct.pack(">hh", 4, len(curves))
-    for pts in curves:
-        buf += struct.pack(">h", len(pts))
-        for x, y in pts:
-            buf += struct.pack(">hh", y, x)  # output first, then input
-    with open(path, "wb") as f:
-        f.write(buf)
-
-
-# ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
 
@@ -398,15 +333,12 @@ def describe(s: Settings) -> str:
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(
         prog="autotone",
-        description="Analyze JPEGs and embed per-image Lightroom corrections "
-                    "(and optionally Photoshop .acv curves).")
+        description="Analyze JPEGs and embed per-image Lightroom corrections.")
     ap.add_argument("paths", nargs="+", help="JPEG files and/or folders")
     ap.add_argument("--report", action="store_true",
                     help="analyze and print proposed corrections; change nothing")
     ap.add_argument("--backup", action="store_true",
                     help="save an untouched copy as <name>.orig before writing")
-    ap.add_argument("--acv", action="store_true",
-                    help="also write a Photoshop curves file (<name>.acv) per image")
     ap.add_argument("--strength", type=float, default=1.0, metavar="N",
                     help="correction strength multiplier, 0.0-1.5 (default 1.0)")
     ap.add_argument("--recursive", action="store_true",
@@ -427,8 +359,6 @@ def main(argv: list[str] | None = None) -> int:
             if args.report:
                 continue
             embed_xmp(path, settings, backup=args.backup)
-            if args.acv:
-                write_acv(os.path.splitext(path)[0] + ".acv", settings)
         except Exception as exc:  # keep going; report at the end
             failures += 1
             print(f"{path}: ERROR: {exc}", file=sys.stderr)

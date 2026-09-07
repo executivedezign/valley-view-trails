@@ -1,34 +1,38 @@
 # autotone
 
 Analyzes JPEG photos for exposure, contrast, color cast, and saturation
-problems, then writes **per-image corrections** that your editor applies for
-you:
-
-- **Lightroom 5+** — the corrections are embedded in each JPEG as Camera Raw
-  (Process 2012) develop settings. Import the photos and they arrive with the
-  sliders already set; every correction stays non-destructive and editable.
-- **Photoshop 6 (2000)+** — optionally writes a `photo.acv` curves file next to
-  each image. Open the image, open Curves, click **Load**, pick the `.acv`.
+problems, then embeds **per-image corrections** in each JPEG as Camera Raw
+(Process 2012) develop settings. Import the photos into **Lightroom 5+** and
+they arrive with the sliders already set; every correction stays
+non-destructive and editable.
 
 Only the JPEG's metadata block is modified. **Image pixels are never
 recompressed or altered.**
 
-## Setup
+## Getting the Windows .exe
 
-Requires Python 3.10+.
+Every change to this tool triggers the "Build autotone.exe" GitHub Actions
+workflow, which builds and smoke-tests a standalone `autotone.exe` on a
+Windows runner. Download it from the workflow run's **Artifacts** section
+(repo → Actions → Build autotone.exe → latest run). No Python installation is
+needed to run it.
+
+To build it yourself instead, on a Windows machine with Python:
 
 ```
-pip install -r requirements.txt
+pip install pyinstaller -r requirements.txt
+pyinstaller --onefile --name autotone autotone.py
 ```
 
 ## Usage
 
+With the .exe (or substitute `python autotone.py` if running from source):
+
 ```
-python autotone.py C:\Photos\hike-2026-09           # embed corrections in place
-python autotone.py C:\Photos\hike-2026-09 --report  # preview only, change nothing
-python autotone.py C:\Photos --recursive --backup   # keep untouched .orig copies
-python autotone.py C:\Photos\hike --acv             # also write Photoshop .acv files
-python autotone.py C:\Photos\hike --strength 0.7    # gentler corrections (0.0-1.5)
+autotone.exe C:\Photos\hike-2026-09           # embed corrections in place
+autotone.exe C:\Photos\hike-2026-09 --report  # preview only, change nothing
+autotone.exe C:\Photos --recursive --backup   # keep untouched .orig copies
+autotone.exe C:\Photos\hike --strength 0.7    # gentler corrections (0.0-1.5)
 ```
 
 Run with `--report` first on a new batch — it prints exactly what would be
@@ -49,26 +53,6 @@ autotone's settings — use it on unedited photos.)
 JPEG white balance uses Lightroom's relative sliders
 (`IncrementalTemperature`/`IncrementalTint`, -100..+100), not Kelvin — that's
 normal for non-raw files.
-
-## Photoshop 6 workflow
-
-With `--acv`, each image gets a `same-name.acv` file approximating the same
-corrections as curves (master tone curve + per-channel color balance).
-In Photoshop 6: open the image, **Image > Adjust > Curves**, click **Load…**,
-select the `.acv`. Works in every later Photoshop version too.
-
-## Building a standalone .exe (Windows)
-
-On a Windows machine with Python installed:
-
-```
-pip install pyinstaller Pillow numpy
-pyinstaller --onefile --name autotone autotone.py
-```
-
-The result is `dist\autotone.exe` — a single file, no Python needed to run it.
-You can then drag a folder onto a shortcut to it, or run it from the command
-prompt as above.
 
 ## How the analysis works
 
