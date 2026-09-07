@@ -1,0 +1,34 @@
+name: Build autotone.exe
+
+on:
+  push:
+    paths:
+      - "tools/autotone/**"
+      - ".github/workflows/build-autotone.yml"
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install pyinstaller -r tools/autotone/requirements.txt
+
+      - name: Build standalone executable
+        run: pyinstaller --onefile --name autotone tools/autotone/autotone.py
+
+      - name: Smoke test
+        run: |
+          python -c "from PIL import Image; Image.new('RGB', (64, 64), (30, 30, 60)).save('smoke.jpg')"
+          dist\autotone.exe smoke.jpg --report
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: autotone-windows
+          path: dist/autotone.exe
