@@ -21,27 +21,29 @@ To build it yourself instead, on a Windows machine with Python:
 
 ```
 pip install pyinstaller -r requirements.txt
-pyinstaller --onefile --name autotone autotone.py
+pyinstaller --onefile --windowed --name autotone autotone_gui.py
 ```
 
 ## Usage
 
-Three ways to run it:
+`autotone.exe` is a windowed app — double-click it (no terminal involved):
 
-1. **Double-click `autotone.exe`.** A window opens and walks you through it:
-   it asks for your photo folder, shows the proposed correction for every
-   image, and only writes anything after you confirm (keeping untouched
-   `.orig` copies).
-2. **Drag a photo folder onto `autotone.exe`.** Processes that folder and
-   waits for a keypress before closing so you can read the results.
-3. **Command line**, for options like `--strength` and `--recursive`
-   (substitute `python autotone.py` if running from source):
+1. **Browse…** to your photo folder (or drag a folder onto the .exe to
+   start with it loaded).
+2. **Analyze photos** — every JPEG gets a row showing its proposed
+   correction. Nothing is written yet.
+3. Review the list, adjust **Strength** if the corrections read too strong
+   or too weak, then click **Apply corrections**. Untouched `.orig` copies
+   are kept unless you untick the backup box.
+
+There is also a command-line version (`autotone.py`) for scripting and
+batch automation:
 
 ```
-autotone.exe C:\Photos\hike-2026-09           # embed corrections in place
-autotone.exe C:\Photos\hike-2026-09 --report  # preview only, change nothing
-autotone.exe C:\Photos --recursive --backup   # keep untouched .orig copies
-autotone.exe C:\Photos\hike --strength 0.7    # gentler corrections (0.0-1.5)
+python autotone.py C:\Photos\hike-2026-09           # embed corrections in place
+python autotone.py C:\Photos\hike-2026-09 --report  # preview only, change nothing
+python autotone.py C:\Photos --recursive --backup   # keep untouched .orig copies
+python autotone.py C:\Photos\hike --strength 0.7    # gentler corrections (0.0-1.5)
 ```
 
 Run with `--report` first on a new batch — it prints exactly what would be

@@ -20,15 +20,24 @@ jobs:
       - name: Install dependencies
         run: pip install pyinstaller -r tools/autotone/requirements.txt
 
-      - name: Build standalone executable
-        run: pyinstaller --onefile --name autotone tools/autotone/autotone.py
-
-      - name: Smoke test
+      - name: Smoke test analysis core
         run: |
           python -c "from PIL import Image; Image.new('RGB', (64, 64), (30, 30, 60)).save('smoke.jpg')"
-          dist\autotone.exe smoke.jpg --report
+          python tools/autotone/autotone.py smoke.jpg --report
+
+      - name: Build windowed executable
+        working-directory: tools/autotone
+        run: pyinstaller --onefile --windowed --name autotone autotone_gui.py
+
+      - name: Smoke test frozen exe (launches and stays alive)
+        shell: pwsh
+        run: |
+          $p = Start-Process -FilePath tools\autotone\dist\autotone.exe -PassThru
+          Start-Sleep -Seconds 15
+          if ($p.HasExited) { throw "autotone.exe exited early with code $($p.ExitCode)" }
+          Stop-Process -Id $p.Id
 
       - uses: actions/upload-artifact@v4
         with:
           name: autotone-windows
-          path: dist/autotone.exe
+          path: tools/autotone/dist/autotone.exe
