@@ -330,6 +330,45 @@ def describe(s: Settings) -> str:
     return ", ".join(parts)
 
 
+def _pause_if_own_window() -> None:
+    """Keep the console open when Windows launched us in our own window.
+
+    Double-clicking the .exe (or dropping a folder onto it) opens a console
+    that would vanish the instant we exit; cmd sets PROMPT in the
+    environment, Explorer does not, so its absence marks that case.
+    """
+    if sys.platform == "win32" and "PROMPT" not in os.environ:
+        try:
+            if sys.stdin and sys.stdin.isatty():
+                input("\nPress Enter to close this window...")
+        except EOFError:
+            pass
+
+
+def interactive_session() -> int:
+    """Guided mode for a double-clicked .exe: ask, preview, confirm, apply."""
+    print("autotone — per-image Lightroom corrections for JPEGs")
+    print("(You can also drag a photo folder onto autotone.exe next time.)\n")
+    try:
+        folder = input("Folder of JPEGs to analyze: ").strip().strip('"')
+        while not os.path.isdir(folder):
+            if not folder:
+                return 0
+            folder = input("That folder doesn't exist — try again "
+                           "(or press Enter to quit): ").strip().strip('"')
+        rc = main([folder, "--report"])
+        if rc != 0:
+            return rc
+        answer = input("\nEmbed these corrections into the photos? "
+                       "Untouched .orig copies will be kept. [y/N] ").strip().lower()
+        if answer in ("y", "yes"):
+            return main([folder, "--backup"])
+        print("No changes made.")
+        return 0
+    except (EOFError, KeyboardInterrupt):
+        return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(
         prog="autotone",
@@ -374,4 +413,6 @@ def main(argv: list[str] | None = None) -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    exit_code = interactive_session() if len(sys.argv) < 2 else main()
+    _pause_if_own_window()
+    sys.exit(exit_code)

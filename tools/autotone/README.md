@@ -26,7 +26,16 @@ pyinstaller --onefile --name autotone autotone.py
 
 ## Usage
 
-With the .exe (or substitute `python autotone.py` if running from source):
+Three ways to run it:
+
+1. **Double-click `autotone.exe`.** A window opens and walks you through it:
+   it asks for your photo folder, shows the proposed correction for every
+   image, and only writes anything after you confirm (keeping untouched
+   `.orig` copies).
+2. **Drag a photo folder onto `autotone.exe`.** Processes that folder and
+   waits for a keypress before closing so you can read the results.
+3. **Command line**, for options like `--strength` and `--recursive`
+   (substitute `python autotone.py` if running from source):
 
 ```
 autotone.exe C:\Photos\hike-2026-09           # embed corrections in place
