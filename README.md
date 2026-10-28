@@ -87,6 +87,11 @@ camera and lenses should go outside. See `camera/README.md`.
 power for manual macro work with the Laowa set on an R5. No GPS, no network —
 pure optics. See `macro/README.md`.
 
+`fieldlog/` is a fourth: the NHW field log — session, subject and shot records
+for the book, typed or spoken, kept offline on the phone and exported as a
+spreadsheet with the ID photos and voice memos. Exact GPS never leaves the
+phone. See `fieldlog/README.md`.
+
 ## Credits
 
 Trail routes and map design by Rob. Satellite imagery © Google / Airbus.

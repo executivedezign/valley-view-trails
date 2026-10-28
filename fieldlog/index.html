@@ -1,0 +1,928 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#111418">
+<title>NHW Field Log</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;min-height:100%;background:#111418;
+    font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#e8ecf1;
+    -webkit-user-select:none;user-select:none;overscroll-behavior-y:contain}
+  body{padding:calc(env(safe-area-inset-top) + 12px) 14px calc(env(safe-area-inset-bottom) + 96px);
+    max-width:560px;margin:0 auto}
+  header{display:flex;align-items:center;gap:8px;margin-bottom:12px;min-height:34px}
+  header h1{flex:1;font-size:15px;font-weight:650;margin:0;line-height:1.25}
+  header h1 u{display:block;text-decoration:none;font-size:11px;font-weight:450;opacity:.5}
+  header .back{border:0;background:#242a33;color:#e8ecf1;border-radius:10px;
+    padding:8px 12px;font-size:14px;font-weight:600}
+  .badge{font-size:11px;font-weight:650;padding:4px 8px;border-radius:20px;white-space:nowrap;
+    background:#2a2210;color:#ffc464;border:1px solid #5a4620}
+  .badge.ok{background:#12211a;color:#7fd8a4;border-color:#24503a}
+
+  .card{background:#1a1f26;border:1px solid #252c36;border-radius:14px;padding:14px;margin-bottom:12px}
+  .card h2{font-size:11px;letter-spacing:.09em;text-transform:uppercase;opacity:.5;
+    margin:0 0 4px;font-weight:600}
+
+  .f{margin-top:12px} .f:first-of-type{margin-top:8px}
+  .f>label{display:block;font-size:12px;opacity:.7;margin-bottom:6px}
+  .f.miss>label::after{content:" · needed";color:#ffc464;opacity:1}
+  .hint{font-size:11.5px;opacity:.5;margin:6px 0 0;line-height:1.4}
+
+  .chips{display:flex;flex-wrap:wrap;gap:6px}
+  .chips button{padding:8px 11px;border:1px solid #2c3440;border-radius:9px;background:#151a20;
+    color:#9fadbd;font-size:13px;font-weight:550}
+  .chips button.on{background:#2f7dff;border-color:#2f7dff;color:#fff}
+  .chips button.dim{opacity:.45}
+  .chips button.on.dim{opacity:1}
+  .chips .num{width:76px}
+
+  input.t,textarea.t,.num{width:100%;padding:9px 11px;border-radius:9px;border:1px solid #2c3440;
+    background:#151a20;color:#e8ecf1;font:inherit;font-size:16px;-webkit-user-select:text;user-select:text}
+  textarea.t{min-height:84px;resize:vertical;line-height:1.4}
+  input.t:focus,textarea.t:focus,.num:focus{outline:none;border-color:#2f7dff}
+  .nu{display:flex;align-items:center;gap:8px}
+  .nu input{flex:0 0 120px} .nu i{font-style:normal;opacity:.55;font-size:13px}
+  .sug{margin-top:6px;border:1px dashed #3a4554;background:none;color:#7fa8d8;border-radius:8px;
+    padding:6px 10px;font-size:12.5px}
+
+  .voice{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:8px}
+  .rec{border:1px solid #5a2a33;background:#2a1a1e;color:#ff9aa4;border-radius:9px;
+    padding:8px 12px;font-size:13px;font-weight:600}
+  .rec.live{background:#d33a4a;border-color:#d33a4a;color:#fff;animation:pulse 1.2s infinite}
+  @keyframes pulse{50%{opacity:.7}}
+  .clip{display:flex;align-items:center;gap:4px;width:100%}
+  .clip audio{flex:1;height:34px;min-width:0}
+  .x{border:0;background:#242a33;color:#9fadbd;border-radius:8px;width:34px;height:34px;font-size:16px}
+
+  .clock{font:700 46px/1.1 ui-monospace,Menlo,monospace;text-align:center;letter-spacing:.02em;
+    background:#000;color:#fff;border-radius:12px;padding:16px 4px 12px;margin-top:8px;
+    font-variant-numeric:tabular-nums}
+  .clock u{display:block;text-decoration:none;font-size:13px;font-weight:500;opacity:.6;margin-top:4px}
+
+  .thumbs{display:flex;flex-wrap:wrap;gap:8px}
+  .thumbs img{width:76px;height:76px;object-fit:cover;border-radius:9px;border:1px solid #2c3440}
+  .addph{width:76px;height:76px;border:1px dashed #3a4554;border-radius:9px;display:flex;
+    align-items:center;justify-content:center;font-size:28px;color:#7fa8d8;position:relative}
+  .addph input{position:absolute;inset:0;opacity:0}
+
+  .list{display:grid;gap:1px;background:#252c36;border-radius:10px;overflow:hidden;margin-top:8px}
+  .list a{display:flex;align-items:center;gap:10px;background:#151a20;padding:11px 12px;
+    color:inherit;text-decoration:none}
+  .list a div{flex:1;min-width:0}
+  .list a b{display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .list a u{display:block;text-decoration:none;font-size:12px;opacity:.55}
+  .list a.live{background:#16233a}
+  .empty{font-size:12.5px;opacity:.5;margin:8px 0 0}
+
+  .btn{display:block;width:100%;padding:13px;border:0;border-radius:12px;background:#2f7dff;
+    color:#fff;font-size:15px;font-weight:650;text-align:center;text-decoration:none}
+  .btn.sec{background:#242a33;color:#e8ecf1}
+  .btn.danger{background:none;border:1px solid #5a2a33;color:#ff9aa4;font-size:13px;padding:10px}
+  .btn+.btn{margin-top:8px}
+  .btn.file{position:relative;overflow:hidden} .btn.file input{position:absolute;inset:0;opacity:0}
+
+  #act{position:fixed;left:0;right:0;bottom:0;padding:10px 14px calc(env(safe-area-inset-bottom) + 10px);
+    background:rgba(17,20,24,.94);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
+    border-top:1px solid #252c36;display:flex;gap:8px;justify-content:center}
+  #act:empty{display:none}
+  #act .btn{max-width:532px;margin:0}
+
+  .info{font-size:12px;line-height:1.5;margin-top:10px;padding:9px 11px;border-radius:9px;
+    background:#141a22;border:1px solid #26303d}
+  .info p{margin:0} .info p+p{margin-top:4px} .info b{font-weight:600;opacity:.65}
+  .note{margin:10px 0 0;padding:9px 11px;border-radius:9px;font-size:12px;line-height:1.45}
+  .note.warn{background:#20191063;border:1px solid #5a4620;color:#ffc464}
+  .note.ok{background:#12211a;border:1px solid #24503a;color:#7fd8a4}
+  .priv{font-size:11.5px;color:#7fd8a4;margin-top:8px;opacity:.8}
+
+  #toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 84px);transform:translateX(-50%);
+    background:#e8ecf1;color:#111418;padding:9px 14px;border-radius:10px;font-size:13px;font-weight:600;
+    opacity:0;transition:opacity .2s;pointer-events:none;max-width:90vw;text-align:center;z-index:9}
+  #toast.on{opacity:1}
+  #view{position:fixed;inset:0;background:#000;display:none;flex-direction:column;z-index:8}
+  #view.on{display:flex}
+  #view img{flex:1;min-height:0;object-fit:contain;width:100%}
+  #view div{display:flex;gap:8px;padding:10px 14px calc(env(safe-area-inset-bottom) + 10px)}
+  footer{font-size:10.5px;opacity:.4;text-align:center;margin-top:14px;line-height:1.7}
+</style>
+</head>
+<body>
+
+<header id="top"></header>
+<main id="main"></main>
+<div id="act"></div>
+<div id="toast"></div>
+<div id="view"><img alt=""><div><button class="btn sec" id="vClose">Close</button><button class="btn danger" id="vDel">Delete photo</button></div></div>
+
+<script>
+'use strict';
+const $=s=>document.querySelector(s);
+const main=$('#main');
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const pad=n=>String(n).padStart(2,'0');
+const ymd=d=>d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate());
+const hms=t=>{const d=new Date(t);return pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds())};
+const hm=t=>hms(t).slice(0,5);
+const day=t=>{const d=new Date(t);return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())};
+const stamp=t=>t?day(t)+' '+hms(t):'';
+const empty=v=>v==null||v===''||(Array.isArray(v)&&!v.length);
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');
+  clearTimeout(toast.h);toast.h=setTimeout(()=>t.classList.remove('on'),2600)}
+
+/* ============ Lens profiles ============
+   The built-in copy is NHW_Lens_Profiles.xlsx as delivered (28 Oct 2026),
+   kept as raw sheet rows so it goes through exactly the same parser as a
+   re-imported spreadsheet. */
+const DEFAULT_PROFILES={"Lenses":[["Lens","Short name","Mount / adapter","Electronic contacts","What the camera records","Focal length (mm)","Magnification range","How magnification is set","Magnification quick picks","Aperture range and control","Aperture entry in the app","Working distance","Focus method","In-camera focus bracketing","Stabiliser (IS) setting","Default support","Light note","Book line (How it was made)"],["Laowa 100mm f/2.8 2x Ultra Macro APO","100mm 2x","EF, on Canon EF-RF adapter","Yes (CPU chip)","Aperture, focal length and lens name are recorded by the camera","100","Infinity to 2x","Focus ring (magnification changes with focus distance)","0.5x, 1x, 1.5x, 2x (read the lens scale)","f/2.8 to f/22, set from the camera body (no aperture ring)","Not needed: camera records it","About 9 cm at 1x; about 7 cm at 2x","Manual focus ring; fine focus by moving the camera","No (no focus motor)","Reads focal length automatically","Handheld","Remove the hood at 2x; it shadows the subject","Manual-focus macro lens that reaches twice life size."],["Laowa 15mm f/4 Wide-Angle Macro w/ Shift","15mm wide macro","EF, on Canon EF-RF adapter","No","Nothing about the lens is recorded","15","Infinity to 1x","Focus ring","0.25x, 0.5x, 1x","f/4 to f/32, unclicked ring on the lens","Required: enter from the ring","About 5 mm at 1x","Focus ring; at 1x move the camera","No","Enter 15 mm","Handheld or beanbag","Lens shadows the subject at 1x; ring light or natural light. Shift only, no tilt","Wide-angle macro lens that shows the subject in its surroundings, down to life size."],["Laowa 24mm f/14 2x Macro Probe","24mm probe","EF, on Canon EF-RF adapter","No","Nothing about the lens is recorded","24","Infinity to 2x","Focus ring","0.5x, 1x, 2x","f/14 to f/40 (f/14 is widest)","Required: enter from the ring","About 20 mm at 2x","Move the probe/camera for fine focus","No","Enter 24 mm","Handheld","Built-in LED ring light (USB powered); open shade at f/14 needs ISO 3200+ or flash","Long, thin probe lens that gets the camera close to a subject at ground level."],["Laowa 25mm f/2.8 2.5-5x Ultra Macro","25mm 2.5-5x","EF, on Canon EF-RF adapter","No","Nothing about the lens is recorded","25","2.5x to 5x (no infinity focus)","Extend the barrel to set magnification","2.5x, 3x, 4x, 5x (read the barrel scale)","f/2.8 to f/16","Required: enter from the ring","About 45 mm at 2.5x; about 40 mm at 5x","Move the camera (rail)","No: use the rail","Enter 25 mm; IBIS off on a rail","Focusing rail","Lens shadows the subject; LED ring light or twin flash","High-magnification macro lens, two and a half to five times life size."],["Laowa 180mm f/4.5 1.5x Ultra Macro APO","180mm 1.5x","RF (native)","No","Nothing about the lens is recorded","180","Infinity to 1.5x","Focus ring (internal focusing)","0.5x, 1x, 1.5x","f/4.5 to f/32, manual ring","Required: enter from the ring","About 14.7 cm at 1.5x","Focus ring; barrel does not extend","No: use a rail for stacks","Enter 180 mm","Handheld or tripod","Most working room of the kit, for wary live subjects","Long macro lens that leaves room between camera and subject, up to one and a half times life size."],["Laowa Aksen 45mm f/2.8 1-5x Ultra Macro APO","Aksen 1-5x","RF (native)","No","Nothing about the lens is recorded","45","1x to 5x (zoom)","Zoom ring; working distance stays the same","1x, 2x, 3x, 4x, 5x (read the zoom scale)","f/2.8 to f/11, ring on the lens","Required: enter from the ring","About 40 mm at every magnification","Move the camera (motorised rail)","No: use the rail","IBIS off on a tripod with a rail","Tripod + motorised rail","Side light with flash or LED; less light reaches the sensor as you zoom in","Macro zoom lens that goes from life size to five times without moving the camera back."],["Laowa Aksen 17.5mm f/1.7 5-10x Ultra Macro APO (non-coaxial)","Aksen 5-10x","RF (native)","No","Nothing about the lens is recorded","17.5","5x to 10x (zoom)","Zoom ring; working distance stays the same","5x, 6x, 7x, 8x, 9x, 10x (read the zoom scale)","f/1.7 to f/5.6, ring on the lens","Required: enter from the ring","About 22.5 mm at every magnification","Move the camera (motorised rail)","No: use the rail","IBIS off","Heavy tripod + motorised rail","Any vibration shows; let the rig settle between steps","Macro zoom lens for five to ten times life size."],["Laowa Aurogon FF 10-50x NA0.5 Supermicro APO","Aurogon","EF, on Canon EF-RF adapter","No","Nothing about the lens is recorded","n/a","10x, 20x, 35x or 50x (swap tubes)","Magnification tube on the main tube","10x, 20x, 35x, 50x","NA dial on the main tube: NA 0.5 (widest) to NA 0.15, 8 detents, on any tube","Required: enter the NA dial setting (not an f-stop)","About 20 mm, the same for every tube","Move the camera on a rail; no focus ring","No: stacking on the rail is required at every magnification","IBIS off","Heavy tripod + motorised rail on a solid surface","Coaxial or ring light; subject is only 20 mm from the front","Photo-microscope lens for ten to fifty times life size."]],"Lights":[["Light"],["Natural light"],["Godox MF12 twin flash"],["Laowa 24mm probe built-in LED ring"],["Lume Cube 2.0 (x2)"],["SmallRig RM03 LED"],["Diffuser (DIY)"],["Reflector"]],"Supports":[["Support"],["Handheld"],["Braced"],["Beanbag / ground pod"],["Tripod"],["WeMacro motorised rail"],["NiSi NM-200S manual rail"],["TopRig S40 slider"],["Zeapon PONS PT pan/tilt head"],["WeMacro vertical/horizontal stand"]],"Camera":[["Body","Notes"],["Canon EOS R5","Records date/time, shutter, ISO; aperture/focal length/lens only with the Laowa 100mm (the only lens with electronic contacts)"]]};
+
+const FSTOPS=[1.7,1.8,2,2.2,2.5,2.8,3.2,3.5,4,4.5,5,5.6,6.3,7.1,8,9,10,11,13,14,16,18,20,22,25,29,32,36,40,45];
+let P;
+
+function parseProfiles(raw){
+  const L=raw.Lenses||raw.lenses;
+  if(!L||!L.length) throw new Error('No Lenses tab in that spreadsheet');
+  const h=L[0].map(x=>String(x).trim().toLowerCase());
+  const at=name=>{name=name.toLowerCase();const i=h.indexOf(name);return i>=0?i:h.findIndex(x=>x.startsWith(name))};
+  if(at('Lens')<0) throw new Error('The Lenses tab needs a "Lens" column');
+  const lenses=L.slice(1).filter(r=>String(r[at('Lens')]||'').trim()).map(r=>{
+    const c=n=>{const i=at(n);return i<0?'':String(r[i]??'').trim()};
+    const o={name:c('Lens'),short:c('Short name')||c('Lens'),mount:c('Mount'),contactsText:c('Electronic contacts'),
+      focal:c('Focal length'),magRange:c('Magnification range'),magHow:c('How magnification'),
+      magPicks:c('Magnification quick'),apText:c('Aperture range'),wd:c('Working distance'),
+      focus:c('Focus method'),bracket:c('In-camera focus'),is:c('Stabiliser'),support:c('Default support'),
+      lightNote:c('Light note'),book:c('Book line')};
+    o.contacts=/^yes/i.test(o.contactsText);
+    o.picks=[...o.magPicks.matchAll(/(\d+(?:\.\d+)?)\s*x/gi)].map(m=>+m[1]);
+    const na=o.apText.match(/NA\s*([\d.]+)[^]*?NA\s*([\d.]+)/i);
+    if(na){
+      /* Eight NA detents spaced logarithmically, the same model the Macro
+         Exposure app uses, so a detent means the same thing in both. */
+      const n=+((o.apText.match(/(\d+)\s*detents/i)||[0,8])[1]);
+      const wide=Math.max(+na[1],+na[2]),narrow=Math.min(+na[1],+na[2]);
+      o.stops=[...Array(n)].map((_,i)=>'NA '+(wide*Math.pow(narrow/wide,i/(n-1))).toFixed(2));
+    }else{
+      const f=o.apText.match(/f\/([\d.]+)\s*to\s*f\/([\d.]+)/i);
+      if(f){const a=+f[1],b=+f[2];
+        o.stops=[...new Set([a,...FSTOPS.filter(x=>x>a&&x<b),b])].map(x=>'f/'+x);}
+      else o.stops=[];
+    }
+    o.canBracket=!!o.bracket&&!/^no/i.test(o.bracket);
+    return o;
+  });
+  const list=t=>(raw[t]||[]).slice(1).map(r=>String(r[0]??'').trim()).filter(Boolean);
+  return {lenses,lights:list('Lights'),supports:list('Supports'),bodies:list('Camera')};
+}
+const lensBy=s=>P.lenses.find(l=>l.short===s);
+function lightKind(n){n=n.toLowerCase();
+  if(/diffus|reflect|scrim/.test(n)) return 'modifier';
+  if(/natural|sun|ambient/.test(n)) return 'natural';
+  if(/flash|strobe|speedlite/.test(n)) return 'flash';
+  if(/led|lume|lamp|torch|light/.test(n)) return 'LED';
+  return 'other'}
+const sources=()=>P.lights.filter(l=>lightKind(l)!=='modifier');
+const modifiers=()=>['None',...P.lights.filter(l=>lightKind(l)==='modifier')];
+function lightCategory(a){const k=new Set((a||[]).map(lightKind));
+  return k.size>1?'mixed':k.size?[...k][0]:''}
+
+/* The profile's default support is prose ("Heavy tripod + motorised rail on a
+   solid surface"). Take the first alternative before any "or", split it on "+",
+   and match each part to the support list item sharing the most words. */
+function defaultSupport(L){
+  const words=s=>s.toLowerCase().split(/[^a-z0-9]+/).filter(w=>w.length>3);
+  return [...new Set(L.support.split(/\s+or\s+/i)[0].split('+').map(part=>{
+    const pw=new Set(words(part));let best=null,score=0;
+    for(const s of P.supports){const n=words(s).filter(w=>pw.has(w)).length;if(n>score){score=n;best=s}}
+    return best}).filter(Boolean))]}
+
+/* ============ Storage ============ */
+let DB;
+const S={sessions:new Map(),subjects:new Map(),shots:new Map()};
+let KV={};
+function openDB(){return new Promise((res,rej)=>{const r=indexedDB.open('nhw-fieldlog',1);
+  r.onupgradeneeded=()=>{for(const s of ['sessions','subjects','shots','blobs','kv'])
+    r.result.createObjectStore(s,{keyPath:'id'})};
+  r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
+function req(store,mode,fn){return new Promise((res,rej)=>{
+  const t=DB.transaction(store,mode),q=fn(t.objectStore(store));
+  t.oncomplete=()=>res(q&&q.result);t.onerror=()=>rej(t.error)})}
+const dbAll=s=>req(s,'readonly',o=>o.getAll());
+const dbPut=(s,v)=>req(s,'readwrite',o=>o.put(v));
+const dbDel=(s,id)=>req(s,'readwrite',o=>o.delete(id));
+
+const pending=new Map();
+function save(store,r){r.updated=Date.now();
+  clearTimeout(pending.get(r.id)?.t);
+  pending.set(r.id,{store,r,t:setTimeout(()=>flushOne(r.id),250)})}
+function flushOne(id){const p=pending.get(id);if(!p) return;pending.delete(id);
+  dbPut(p.store,structuredClone(p.r)).catch(e=>toast('Could not save: '+e.message))}
+function flush(){for(const id of [...pending.keys()]){clearTimeout(pending.get(id).t);flushOne(id)}}
+document.addEventListener('visibilitychange',()=>{if(document.hidden) flush()});
+addEventListener('pagehide',flush);
+const putKV=(id,data)=>{KV[id]=data;return dbPut('kv',{id,data})};
+
+/* Photos and voice clips are kept as ArrayBuffers rather than Blobs: older
+   iOS builds have lost Blob contents from IndexedDB, buffers survive. */
+let blobSeq=0;
+async function putBlob(b){const id='b'+Date.now().toString(36)+(blobSeq++).toString(36);
+  await dbPut('blobs',{id,type:b.type,buf:await b.arrayBuffer()});return id}
+const urls=new Map();
+async function blobURL(id){if(urls.has(id)) return urls.get(id);
+  const r=await req('blobs','readonly',o=>o.get(id));if(!r) return '';
+  const u=URL.createObjectURL(new Blob([r.buf],{type:r.type}));urls.set(id,u);return u}
+const getBlob=id=>req('blobs','readonly',o=>o.get(id));
+async function delBlobs(ids){for(const id of ids){await dbDel('blobs',id);
+  if(urls.has(id)){URL.revokeObjectURL(urls.get(id));urls.delete(id)}}}
+const blobIds=r=>[...(r.photos||[]),...Object.values(r.audio||{}).flat()];
+
+const subjectsOf=sid=>[...S.subjects.values()].filter(x=>x.sessionId===sid).sort((a,b)=>a.t-b.t);
+const shotsOf=jid=>[...S.shots.values()].filter(x=>x.subjectId===jid).sort((a,b)=>a.t-b.t);
+const shotsOfSession=sid=>[...S.shots.values()].filter(x=>x.sessionId===sid).sort((a,b)=>a.t-b.t);
+const nextNum=(ids,prefix)=>1+Math.max(0,...ids.filter(i=>i.startsWith(prefix))
+  .map(i=>parseInt(i.slice(prefix.length),10)||0));
+
+/* ============ Pick lists ============ */
+const PLACE=['Mixed hardwood and hemlock woods','Hardwood woods','Conifer woods','Stream bank',
+  'Wet ground or swamp','Field edge','Meadow','Trail side','Garden','Lawn','Other'];
+const KINDS=['Gilled mushroom','Bolete','Jelly fungus','Cup fungus','Coral or club','Puffball','Bracket',
+  'Slime mould','Insect','Spider','Other invertebrate','Plant','Other'];
+const FUNGI=new Set(KINDS.slice(0,8)),ANIMAL=new Set(['Insect','Spider','Other invertebrate']);
+const isF=r=>FUNGI.has(r.kind),isA=r=>ANIMAL.has(r.kind);
+const STACK='Rail stack',BRACKET='In-camera focus bracketing';
+
+/* ============ Field schemas ============
+   One list per level drives the form, the "needed" check and the export
+   columns, so the three cannot drift apart. {h} starts a card. */
+const yes=()=>true;
+const SESSION=[
+  {h:'Camera clock check'},
+  {k:'_clock',t:'html',html:()=>`<div class="clock" id="clk">${hms(Date.now())}<u>${day(Date.now())} · phone time</u></div>
+    <p class="hint">Photograph this clock with the camera, then note that frame's number.
+    Enter the difference too if you can read it now; otherwise it is worked out from the frame later.</p>`},
+  {k:'clockFrame',l:'File number of the clock photo',t:'text',file:1,ph:'e.g. 213A4073',
+    req:r=>empty(r.clockOffset),xl:'Clock photo file'},
+  {k:'clockOffset',l:'Camera minus phone',t:'num',unit:'seconds (+ if the camera is ahead)',
+    xl:'Clock offset (s, camera minus phone)'},
+  {h:'Camera files'},
+  {k:'firstFile',l:'First file number (start)',t:'text',file:1,ph:'e.g. 213A4074',req:yes,xl:'First file'},
+  {k:'lastFile',l:'Last file number (end)',t:'text',file:1,req:r=>!!r.end,xl:'Last file',
+    sug:r=>shotsOfSession(r.id).map(x=>x.fileLast||x.fileFirst).filter(Boolean).sort().pop()},
+  {h:'Place'},
+  {k:'place',l:'Public description of the place',t:'many',o:PLACE,req:yes,xl:'Place'},
+  {k:'placeText',l:'In your words (public)',t:'text',ph:'e.g. north slope above the brook',xl:'Place notes'},
+  {k:'access',l:'Land access (private record)',t:'one',o:['Public land','Private, with permission','Own land'],
+    req:yes,xl:'Land access (private)'},
+  {k:'_gps',t:'html',html:r=>`<p class="priv">${r.gps?'🔒 Exact position saved on this phone only (±'+Math.round(r.gps.acc)+' m). Never exported.'
+    :r.gpsErr?'No GPS fix: '+esc(r.gpsErr)+' <button class="sug" data-act="gps">Try again</button>':'Getting GPS…'}</p>`},
+  {h:'Weather now'},
+  {k:'_wx',t:'html',html:r=>{const s=r.wxAuto?'Filled from Open-Meteo for '+r.wxAuto.hour.replace('T',' ')+'. Blank fields were filled; your entries are kept.'
+      :!r.gps?'Weather fills in once there is a GPS position.':r.wxErr?'Weather lookup failed: '+esc(r.wxErr):
+      navigator.onLine?'Looking up weather…':'No signal: weather fills in when the phone is back online.';
+    return `<p class="hint" style="margin-top:4px">${s}</p>`+(r.gps?`<button class="sug" data-act="wx">${r.wxAuto?'Look up again':'Look up now'}</button>`:'')}},
+  {k:'temp',l:'Air temperature',t:'num',unit:'°F',xl:'Air temperature (°F)'},
+  {k:'hum',l:'Humidity',t:'num',unit:'%',xl:'Humidity (%)'},
+  {k:'sky',l:'Sky',t:'one',o:['Sun','Partly cloudy','Overcast'],req:yes},
+  {k:'wind',l:'Wind',t:'one',o:['Calm','Light','Gusty'],req:yes},
+  {k:'rainNow',l:'Rain now',t:'one',o:['None','Drizzle','Rain'],req:yes},
+  {h:'Recent rain'},
+  {k:'rain24',l:'Rain in the last 24 hours',t:'num',unit:'in',xl:'Rain last 24 h (in)'},
+  {k:'rain3d',l:'Rain in the last 3 days',t:'num',unit:'in',xl:'Rain last 3 days (in)'},
+  {k:'ground',l:'The ground',t:'one',o:['Dry','Damp','Wet','Soaked'],req:yes},
+  {h:'Light and purpose'},
+  {k:'canopy',l:'Light under the canopy',t:'one',o:['Open sun','Dappled','Full shade','Dusk'],req:yes},
+  {k:'target',l:'What you went out to find',t:'text',ph:'e.g. fungi, jumping spiders',req:yes},
+  {h:'Gear taken'},
+  {k:'gearBody',xl:'Gear: body',l:'Body',t:'many',o:()=>P.bodies,req:yes},
+  {k:'gearLenses',xl:'Gear: lenses',l:'Lenses',t:'many',o:()=>P.lenses.map(l=>l.short),req:yes},
+  {k:'gearLights',xl:'Gear: lights and diffusers',l:'Lights and diffusers',t:'many',o:()=>P.lights},
+  {k:'gearSupports',xl:'Gear: supports',l:'Supports',t:'many',o:()=>P.supports},
+  {h:'Session notes'},
+  {k:'notes',l:'What the day was like, what you noticed, what went wrong or surprised you',t:'area',voice:1,req:yes,
+    ph:'Type, use the keyboard mic, or record below. "Nothing" is fine.',xl:'Session notes'},
+];
+
+const SUBJECT=[
+  {h:'Phone ID photo'},
+  {k:'photos',t:'html',noX:1,html:r=>`<div class="thumbs" id="thumbs">${(r.photos||[]).map(id=>`<img data-ph="${id}" alt="">`).join('')}
+    <label class="addph">+<input type="file" accept="image/*" capture="environment" data-act="photo"></label></div>
+    <p class="hint">Where it is, with something for scale. Not printed.</p>`},
+  {h:'What it is'},
+  {k:'name',l:'Name you think it is',t:'text',ph:'Common or scientific name',req:yes},
+  {k:'conf',l:'Confidence',t:'one',o:['Sure','Likely','Guess'],req:yes},
+  {k:'kind',l:'Kind of subject',t:'one',o:KINDS,req:yes},
+  {k:'size',l:r=>isF(r)?'Cap width':isA(r)?'Body length':'Size',t:'num',unit:'mm',req:yes,xl:'Size (mm)'},
+  {k:'sizeHow',l:'Size was',t:'one',o:['Measured','Estimated'],req:yes,xl:'Size measured or estimated'},
+  {k:'stage',l:'Stage',t:'one',o:r=>isA(r)?['Adult','Juvenile']:['Young','Mature','Old or drying'],show:r=>isF(r)||isA(r)},
+  {h:'Where it is'},
+  {k:'on',l:'What it is on',t:'one',o:['Soil','Moss','Leaf litter','Needles','Dead wood','Living tree','Dung','Flower','Leaf','Other'],req:yes},
+  {k:'wood',l:'Dead wood',t:'one',o:['Hardwood','Conifer','Not sure'],show:r=>r.on==='Dead wood',req:yes,xl:'Dead wood type'},
+  {k:'trees',l:'Trees and plants nearby',t:'many',o:['Oak','Maple','Beech','Birch','Aspen','Hemlock','Pine','Spruce','Fir','Other'],
+    req:isF,xl:'Trees and plants nearby'},
+  {k:'treesText',l:'Other trees and plants',t:'text',show:r=>(r.trees||[]).includes('Other'),xl:'Other trees and plants'},
+  {k:'setting',l:'Setting',t:'one',o:['Inside woods','Woods edge','Trail side','Stream or wet ground','Field','Lawn','Garden','Other'],req:yes},
+  {k:'howMany',l:'How many',t:'one',o:['One','A few scattered','Cluster'],req:yes},
+  {k:'count',l:'Count (optional)',t:'num',show:r=>r.howMany&&r.howMany!=='One',xl:'Count'},
+  {h:'Identification features',show:isF},
+  {k:'gill',l:'Gill or pore colour',t:'text',show:isF,xl:'Gill or pore colour'},
+  {k:'ring',l:'Ring or cup on the stem',t:'one',o:['Ring','Cup at the base','Both','Neither','Not checked'],show:isF,xl:'Ring or cup'},
+  {k:'bruise',l:'Colour change when bruised',t:'text',ph:'e.g. none, blue in seconds',show:isF,xl:'Bruising'},
+  {k:'milk',l:'Milk',t:'text',ph:'e.g. none, white, turns yellow',show:isF},
+  {k:'smell',l:'Smell',t:'text',show:isF},
+  {k:'spore',l:'Spore print',t:'one',o:['Not taken','Taken'],show:isF,xl:'Spore print'},
+  {k:'sporeColour',l:'Spore print colour',t:'text',show:r=>isF(r)&&r.spore==='Taken',xl:'Spore print colour'},
+  {h:'Behaviour',show:isA},
+  {k:'behaviour',l:'Behaviour',t:'one',o:['Resting','Feeding','Hunting','Mating','Grooming','Moving'],show:isA},
+  {h:'Honesty'},
+  {k:'moved',l:'Anything moved or arranged?',t:'many',excl:'Nothing touched',
+    o:['Nothing touched','Debris cleared','Subject moved','Water sprayed','Other'],req:yes,xl:'Moved or arranged'},
+  {k:'movedNote',l:'What was done',t:'text',show:r=>(r.moved||[]).some(x=>x!=='Nothing touched'),
+    req:r=>(r.moved||[]).includes('Other'),xl:'Moved or arranged: note'},
+  {h:'Notes'},
+  {k:'notes',l:'Notes',t:'area',voice:1,ph:'Type, use the keyboard mic, or record below.'},
+];
+
+const lensOf=r=>r.lens&&lensBy(r.lens);
+const sessOf=r=>S.sessions.get(r.sessionId)||{};
+const SHOT=[
+  {h:'Camera files'},
+  {k:'fileFirst',l:'First file',t:'text',file:1,req:yes,sug:r=>r._sugFirst},
+  {k:'fileLast',l:'Last file (blank for a single frame)',t:'text',file:1,xl:'Last file',
+    req:r=>r.focus===STACK||r.focus===BRACKET},
+  {h:'Lens'},
+  {k:'lens',l:'Lens',t:'one',o:()=>P.lenses.map(l=>l.short),dim:(r,o)=>!(sessOf(r).gearLenses||[]).includes(o),
+    req:yes,keep:1,on:lensChanged,xv:r=>lensOf(r)?.name||r.lensName||r.lens},
+  {k:'_lens',t:'html',show:lensOf,html:r=>{const L=lensOf(r);return `<div class="info">
+    <p><b>Mount</b> ${esc(L.mount)} · <b>Working distance</b> ${esc(L.wd)}</p>
+    <p><b>IS</b> ${esc(L.is)}</p>${L.lightNote?`<p><b>Light</b> ${esc(L.lightNote)}</p>`:''}</div>`}},
+  {k:'mag',l:'Magnification',t:'one',num:1,custom:1,o:r=>lensOf(r)?.picks||[],fmt:v=>v+'×',show:lensOf,req:yes,
+    hint:r=>lensOf(r)?'Confirm against the lens scale. '+esc(lensOf(r).magHow)+'.':'',xv:r=>r.mag==null?'':r.mag+'x'},
+  {k:'ap',l:r=>lensOf(r)?.stops[0]?.startsWith('NA')?'NA dial':'Aperture (from the ring)',t:'one',o:r=>lensOf(r)?.stops||[],
+    show:r=>lensOf(r)&&!lensOf(r).contacts,req:yes,xl:'Aperture',xAll:1,
+    xv:r=>lensOf(r)?.contacts?'Recorded by the camera':r.ap||''},
+  {k:'adapter',l:'Adapters and extension',t:'one',o:['None','Adapter','Extension tube','Teleconverter'],keep:1,xl:'Adapters and extension'},
+  {h:'Light'},
+  {k:'light',l:'Light source',t:'many',o:sources,dim:(r,o)=>!(sessOf(r).gearLights||[]).includes(o),req:yes,keep:1},
+  {k:'mod',l:'Modifier',t:'many',o:modifiers,excl:'None',req:yes,keep:1,xl:'Light modifier'},
+  {k:'dir',l:'Light from',t:'one',o:['Front','Side','Behind','Above'],req:yes,keep:1,xl:'Light direction'},
+  {h:'Support and focus'},
+  {k:'support',l:'Support',t:'many',o:()=>P.supports,dim:(r,o)=>!(sessOf(r).gearSupports||[]).includes(o),req:yes,keep:1},
+  {k:'focus',l:'Focus method',t:'one',o:r=>['Single frame',...(lensOf(r)?.canBracket?[BRACKET]:[]),STACK],req:yes,keep:1,xl:'Focus method'},
+  {k:'frames',l:'Frames in the stack',t:'num',show:r=>r.focus===STACK||r.focus===BRACKET,req:yes,keep:1,xl:'Frames'},
+  {k:'step',l:'Step size',t:'num',unit:'µm',show:r=>r.focus===STACK||r.focus===BRACKET,keep:1,xl:'Step (µm)'},
+  {h:'Why and keeper'},
+  {k:'why',l:'Why these settings',t:'area',voice:1,ph:'e.g. f/8 to get the whole cap sharp',xl:'Why these settings'},
+  {k:'keeper',l:'Keeper',t:'yes'},
+];
+const SCHEMA={sessions:SESSION,subjects:SUBJECT,shots:SHOT};
+
+function lensChanged(r){
+  const L=lensOf(r);if(!L) return;
+  r.lensName=L.name;
+  const m=(KV.lensMem||{})[r.lens]||{};
+  r.mag=m.mag!=null&&(L.picks.includes(m.mag)||!L.picks.length)?m.mag:null;
+  r.ap=L.contacts?null:(L.stops.includes(m.ap)?m.ap:null);
+  if(m.light?.length) r.light=m.light;
+  r.support=m.support?.length?m.support:defaultSupport(L);
+  if(r.focus===BRACKET&&!L.canBracket) r.focus=null;
+}
+function rememberLens(r){if(!r.lens) return;
+  const mem={...(KV.lensMem||{})};mem[r.lens]={mag:r.mag,ap:r.ap,light:r.light,support:r.support};
+  clearTimeout(rememberLens.t);KV.lensMem=mem;rememberLens.t=setTimeout(()=>putKV('lensMem',mem),400)}
+
+/* ============ Required-field check ============ */
+const val=(f,r,k)=>typeof f[k]==='function'?f[k](r):f[k];
+function shown(schema,f,r){if(f.show&&!f.show(r)) return false;
+  for(let i=schema.indexOf(f);i>=0;i--) if(schema[i].h) return !schema[i].show||schema[i].show(r);
+  return true}
+const isMissing=(schema,f,r)=>!!f.k&&f.t!=='html'&&!!val(f,r,'req')&&shown(schema,f,r)&&empty(r[f.k]);
+const missing=(store,r)=>SCHEMA[store].filter(f=>isMissing(SCHEMA[store],f,r));
+function missingAll(sid){const s=S.sessions.get(sid);
+  return missing('sessions',s).length+subjectsOf(sid).reduce((a,j)=>a+missing('subjects',j).length,0)+
+    shotsOfSession(sid).reduce((a,x)=>a+missing('shots',x).length,0)}
+const badge=n=>n?`<span class="badge">${n} to fill</span>`:`<span class="badge ok">complete</span>`;
+
+/* ============ Form rendering ============ */
+let CUR=null;
+function fieldHTML(f,r,schema){
+  const v=r[f.k],lab=val(f,r,'l')||'';
+  let b='';
+  if(f.t==='html') return f.html(r);
+  if(f.t==='one'||f.t==='many'){
+    const opts=val(f,r,'o')||[];
+    b='<div class="chips">'+opts.map(o=>{const on=f.t==='one'?String(v)===String(o):(v||[]).includes(o);
+      const dim=f.dim&&f.dim(r,o);
+      return `<button data-k="${f.k}" data-v="${esc(o)}" class="${on?'on':''}${dim?' dim':''}">${esc(f.fmt?f.fmt(o):o)}</button>`}).join('');
+    if(f.custom) b+=`<input class="num" data-k="${f.k}" inputmode="decimal" placeholder="other"
+      value="${v!=null&&!opts.includes(v)?esc(v):''}">`;
+    b+='</div>';
+  }else if(f.t==='text'){
+    b=`<input class="t" data-k="${f.k}" value="${esc(v)}" placeholder="${esc(f.ph||'')}"
+      ${f.file?'autocapitalize="characters" autocorrect="off" spellcheck="false"':''}>`;
+    const s=f.sug&&f.sug(r);
+    if(s&&s!==v) b+=`<button class="sug" data-fill="${f.k}" data-v="${esc(s)}">Use ${esc(s)}</button>`;
+  }else if(f.t==='num'){
+    b=`<div class="nu"><input class="t" data-k="${f.k}" inputmode="decimal" value="${v==null?'':esc(v)}">
+      ${f.unit?`<i>${esc(f.unit)}</i>`:''}</div>`;
+  }else if(f.t==='area'){
+    b=`<textarea class="t" data-k="${f.k}" placeholder="${esc(f.ph||'')}">${esc(v)}</textarea>`;
+    if(f.voice){const clips=(r.audio||{})[f.k]||[];
+      b+=`<div class="voice"><button class="rec${REC&&REC.k===f.k?' live':''}" data-rec="${f.k}">${REC&&REC.k===f.k?'■ Stop '+recTime():'● Record voice memo'}</button>
+        ${clips.map(id=>`<div class="clip"><audio controls preload="none" data-au="${id}"></audio><button class="x" data-delclip="${f.k}" data-v="${id}">×</button></div>`).join('')}</div>`}
+  }else if(f.t==='yes'){
+    b=`<div class="chips"><button data-k="${f.k}" class="${v?'on':''}">${v?'★ Keeper':'☆ Mark as keeper'}</button></div>`;
+  }
+  const hint=val(f,r,'hint');
+  return `<div class="f${isMissing(schema,f,r)?' miss':''}" data-f="${f.k}"><label>${esc(lab)}</label>${b}${hint?`<p class="hint">${hint}</p>`:''}</div>`;
+}
+function formHTML(schema,r){
+  let out='',card=null,head=null;
+  const close=()=>{if(card!==null&&card.trim()) out+=`<div class="card">${head}${card}</div>`;card=null};
+  for(const f of schema){
+    if(f.h){close();if(f.show&&!f.show(r)){card=null;head=null;continue}
+      head=`<h2>${esc(f.h)}</h2>`;card='';continue}
+    if(card===null) continue;
+    if(f.show&&!f.show(r)) continue;
+    card+=fieldHTML(f,r,schema);
+  }
+  close();return out;
+}
+function renderForm(){
+  if(!CUR) return;
+  CUR.dirty=false;CUR.el.innerHTML=formHTML(CUR.schema,CUR.rec);
+  hydrate(CUR.el);updBadge();
+}
+async function hydrate(el){
+  for(const a of el.querySelectorAll('audio[data-au]')) a.src=await blobURL(a.dataset.au);
+  for(const i of el.querySelectorAll('img[data-ph]')) i.src=await blobURL(i.dataset.ph);
+  for(const i of el.querySelectorAll('img[data-thumb]')) i.src=await blobURL(i.dataset.thumb);
+}
+/* GPS, weather and a finished recording arrive whenever they like. Re-rendering
+   then would yank the keyboard out from under a half-typed note, so while a
+   box has focus the refresh waits until it is left. */
+function laterRender(r){
+  if(!CUR||(r&&CUR.rec!==r)) return;
+  const a=document.activeElement;
+  if(a&&CUR.el.contains(a)&&/^(INPUT|TEXTAREA)$/.test(a.tagName)){CUR.dirty=true;return}
+  renderForm();
+}
+main.addEventListener('focusout',()=>setTimeout(()=>{
+  const a=document.activeElement;
+  if(CUR&&CUR.dirty&&!(a&&CUR.el.contains(a)&&/^(INPUT|TEXTAREA)$/.test(a.tagName))) renderForm()},300));
+function updBadge(){const b=$('#badge');if(!b||!CUR) return;
+  b.outerHTML=badge(missing(CUR.store,CUR.rec).length).replace('<span','<span id="badge"')}
+function commit(){const{store,rec}=CUR;save(store,rec);if(store==='shots') rememberLens(rec)}
+
+main.addEventListener('click',async e=>{
+  const b=e.target.closest('button');if(!b||!CUR) return;
+  const r=CUR.rec,d=b.dataset;
+  if(d.k){const f=CUR.schema.find(x=>x.k===d.k);let v=d.v;if(f.num) v=+v;
+    if(f.t==='one') r[f.k]=String(r[f.k])===String(v)?null:v;
+    else if(f.t==='many'){let a=[...(r[f.k]||[])];
+      if(a.includes(v)) a=a.filter(x=>x!==v);
+      else{a=v===f.excl?[]:a.filter(x=>x!==f.excl);a.push(v)}
+      r[f.k]=a}
+    else if(f.t==='yes') r[f.k]=!r[f.k];
+    if(f.on) f.on(r);
+    commit();renderForm();return}
+  if(d.fill){r[d.fill]=d.v;commit();renderForm();return}
+  if(d.rec){toggleRec(d.rec);return}
+  if(d.delclip){if(!confirm('Delete this voice memo?')) return;
+    r.audio[d.delclip]=r.audio[d.delclip].filter(x=>x!==d.v);await delBlobs([d.v]);commit();renderForm();return}
+  if(d.act==='wx'){fetchWeather(r,true);return}
+  if(d.act==='gps'){locate(CUR.store,r);return}
+});
+main.addEventListener('input',e=>{
+  const i=e.target;if(!i.dataset.k||!CUR) return;
+  const f=CUR.schema.find(x=>x.k===i.dataset.k),r=CUR.rec;
+  let v=i.value;
+  if(f.t==='num'||f.num){v=v.trim()===''?null:parseFloat(v.replace(',','.'));if(Number.isNaN(v)) v=null}
+  else if(f.file) v=v.replace(/\s+/g,'').toUpperCase();
+  r[f.k]=v;commit();
+  if(f.custom) for(const c of i.parentNode.querySelectorAll('button')) c.classList.toggle('on',String(v)===c.dataset.v);
+  i.closest('.f')?.classList.toggle('miss',isMissing(CUR.schema,f,r));updBadge();
+});
+main.addEventListener('change',async e=>{
+  const i=e.target;if(i.dataset.act!=='photo'||!CUR) return;
+  const r=CUR.rec;
+  for(const file of i.files){r.photos=[...(r.photos||[]),await putBlob(file)]}
+  commit();renderForm();
+});
+main.addEventListener('click',e=>{const img=e.target.closest('img[data-ph]');if(img) openPhoto(img.dataset.ph)});
+function openPhoto(id){const v=$('#view');v.querySelector('img').src=urls.get(id)||'';v.dataset.id=id;v.classList.add('on')}
+$('#vClose').onclick=()=>$('#view').classList.remove('on');
+$('#vDel').onclick=async()=>{if(!confirm('Delete this photo?')) return;
+  const id=$('#view').dataset.id,r=CUR.rec;r.photos=r.photos.filter(x=>x!==id);
+  await delBlobs([id]);commit();$('#view').classList.remove('on');renderForm()};
+
+/* ============ Voice memos ============
+   Typed dictation needs nothing from the app: the mic key on the iPhone
+   keyboard works in every text box. This records the audio itself, which is
+   kept with the entry and exported next to the spreadsheet. */
+let REC=null;
+const recTime=()=>{const s=Math.floor((Date.now()-REC.t0)/1000);return Math.floor(s/60)+':'+pad(s%60)};
+async function toggleRec(k){
+  if(REC){REC.mr.stop();return}
+  if(!window.MediaRecorder||!navigator.mediaDevices){toast('Voice recording is not available here. Use the keyboard mic instead.');return}
+  let stream;
+  try{stream=await navigator.mediaDevices.getUserMedia({audio:true})}
+  catch(e){toast('Microphone blocked. Allow it in Settings, or use the keyboard mic.');return}
+  const mime=['audio/mp4','audio/webm;codecs=opus','audio/webm'].find(m=>MediaRecorder.isTypeSupported(m))||'';
+  const mr=new MediaRecorder(stream,mime?{mimeType:mime}:{}),chunks=[];
+  const {store,rec}=CUR;
+  mr.ondataavailable=e=>{if(e.data.size) chunks.push(e.data)};
+  mr.onstop=async()=>{
+    stream.getTracks().forEach(t=>t.stop());clearInterval(REC.timer);REC=null;
+    const blob=new Blob(chunks,{type:(mr.mimeType||mime||'audio/mp4').split(';')[0]});
+    if(blob.size){const id=await putBlob(blob);rec.audio={...(rec.audio||{})};
+      rec.audio[k]=[...(rec.audio[k]||[]),id];save(store,rec)}
+    laterRender(rec);
+  };
+  mr.start(1000);
+  REC={mr,k,t0:Date.now(),timer:setInterval(()=>{const b=main.querySelector(`[data-rec="${k}"]`);
+    if(b&&REC) b.textContent='■ Stop '+recTime()},500)};
+  renderForm();
+}
+const stopRec=()=>{if(REC) REC.mr.stop()};
+
+/* ============ GPS and weather ============ */
+function locate(store,r){
+  if(!navigator.geolocation){r.gpsErr='no location service';save(store,r);return Promise.resolve()}
+  r.gpsErr=null;laterRender(r);
+  return new Promise(res=>navigator.geolocation.getCurrentPosition(p=>{
+    r.gps={lat:p.coords.latitude,lon:p.coords.longitude,acc:p.coords.accuracy,t:p.timestamp};
+    save(store,r);laterRender(r);
+    if(store==='sessions') fetchWeather(r);res()},
+  e=>{r.gpsErr=e.message||'unavailable';save(store,r);laterRender(r);res()},
+  {enableHighAccuracy:true,timeout:20000,maximumAge:30000}))}
+
+const WX='https://api.open-meteo.com/v1/forecast';
+const HR=['temperature_2m','relative_humidity_2m','cloud_cover','wind_speed_10m','wind_gusts_10m','precipitation','weather_code'];
+/* The lookup is for the hour the session started, not "now", so a session
+   logged with no signal gets the right weather when it syncs hours later. */
+async function fetchWeather(r,manual){
+  if(!r.gps||r._wxBusy) return;
+  const daysAgo=Math.ceil((Date.now()-r.start)/864e5);
+  if(daysAgo>88){if(manual) toast('Too long ago for the weather service');return}
+  if(!navigator.onLine&&!manual) return;
+  r._wxBusy=true;
+  try{
+    const q=new URLSearchParams({latitude:r.gps.lat.toFixed(3),longitude:r.gps.lon.toFixed(3),hourly:HR.join(','),
+      past_days:String(daysAgo+3),forecast_days:'1',temperature_unit:'fahrenheit',wind_speed_unit:'mph',
+      precipitation_unit:'inch',timezone:'auto'});
+    const res=await fetch(WX+'?'+q);
+    if(!res.ok) throw new Error('weather service returned '+res.status);
+    const j=await res.json(),h=j.hourly,off=j.utc_offset_seconds*1000;
+    const ts=h.time.map(s=>Date.parse(s+':00Z')-off);
+    let i=-1;for(let k=0;k<ts.length;k++) if(ts[k]<=r.start) i=k;
+    if(i<0) throw new Error('no data for the start time');
+    const sum=n=>h.precipitation.slice(Math.max(0,i-n+1),i+1).reduce((a,b)=>a+(b||0),0);
+    const cc=h.cloud_cover[i],code=h.weather_code[i],pr=h.precipitation[i]||0;
+    const a={temp:Math.round(h.temperature_2m[i]),hum:Math.round(h.relative_humidity_2m[i]),
+      sky:cc<=25?'Sun':cc<=70?'Partly cloudy':'Overcast',
+      wind:h.wind_gusts_10m[i]>=20?'Gusty':h.wind_speed_10m[i]<3?'Calm':'Light',
+      rainNow:(code>=51&&code<=57)?'Drizzle':((code>=61&&code<=67)||(code>=80&&code<=82)||code>=95)?'Rain':pr>0?(pr<.02?'Drizzle':'Rain'):'None',
+      rain24:+sum(24).toFixed(2),rain3d:+sum(72).toFixed(2)};
+    for(const k in a) if(empty(r[k])) r[k]=a[k];
+    r.wxAuto={...a,hour:h.time[i]};r.wxErr=null;
+  }catch(e){r.wxErr=e.message}
+  r._wxBusy=false;save('sessions',r);laterRender(r);
+}
+function retryWeather(){for(const s of S.sessions.values()) if(s.gps&&!s.wxAuto) fetchWeather(s)}
+addEventListener('online',retryWeather);
+
+/* ============ Creating records ============ */
+function newSession(){
+  const now=Date.now(),id0='NHW-'+ymd(new Date(now))+'-';
+  const id=id0+nextNum([...S.sessions.keys()],id0);
+  const prev=[...S.sessions.values()].sort((a,b)=>b.start-a.start)[0];
+  const r={id,start:now,end:null,
+    place:prev?.place||[],placeText:prev?.placeText||'',access:prev?.access||null,
+    gearBody:prev?.gearBody||P.bodies.slice(0,1),gearLenses:prev?.gearLenses||[],
+    gearLights:prev?.gearLights||[],gearSupports:prev?.gearSupports||[]};
+  S.sessions.set(id,r);save('sessions',r);
+  location.hash='s='+id;locate('sessions',r);
+}
+function newSubject(sid){
+  const id0=sid+'-S',id=id0+pad(nextNum([...S.subjects.keys()],id0));
+  const prev=subjectsOf(sid).pop();
+  const r={id,sessionId:sid,t:Date.now(),photos:[],setting:prev?.setting||null,trees:prev?.trees||[]};
+  S.subjects.set(id,r);save('subjects',r);
+  location.hash='j='+id;locate('subjects',r);
+}
+function nextFile(f){const m=/^(.*?)(\d+)$/.exec(f||'');if(!m) return '';
+  const n=String(+m[2]+1).padStart(m[2].length,'0');return n.length>m[2].length?'':m[1]+n}
+function newShot(jid){
+  const j=S.subjects.get(jid),id0=jid+'-',id=id0+pad(nextNum([...S.shots.keys()],id0));
+  const prev=shotsOf(jid).pop()||shotsOfSession(j.sessionId).pop();
+  const r={id,subjectId:jid,sessionId:j.sessionId,t:Date.now(),fileFirst:'',fileLast:'',keeper:false,why:''};
+  if(prev){for(const f of SHOT) if(f.keep&&f.k) r[f.k]=structuredClone(prev[f.k]);
+    r.lensName=prev.lensName;r.mag=prev.mag;r.ap=prev.ap;
+    r._sugFirst=nextFile(prev.fileLast||prev.fileFirst)}
+  else{const g=S.sessions.get(j.sessionId)?.gearLenses||[];
+    if(g.length===1){r.lens=g[0];lensChanged(r)}
+    r.adapter='None'}
+  S.shots.set(id,r);save('shots',r);
+  location.hash='x='+id;
+}
+
+async function deleteRecord(store,r){
+  const kids=store==='sessions'?[...subjectsOf(r.id),...shotsOfSession(r.id)]:store==='subjects'?shotsOf(r.id):[];
+  for(const k of [r,...kids]){
+    const st=k===r?store:S.subjects.has(k.id)?'subjects':'shots';
+    await delBlobs(blobIds(k));S[st].delete(k.id);pending.delete(k.id);await dbDel(st,k.id)}
+}
+
+/* ============ Views ============ */
+const bar=(back,title,sub,showBadge)=>{$('#top').innerHTML=
+  (back!=null?`<button class="back" onclick="location.hash='${back}'">‹ Back</button>`:'')+
+  `<h1>${esc(title)}${sub?`<u>${esc(sub)}</u>`:''}</h1>`+(showBadge?'<span id="badge"></span>':'')};
+const act=html=>{$('#act').innerHTML=html};
+let clockT=null;
+
+function viewHome(){
+  CUR=null;bar(null,'NHW Field Log','Session · subject · shot');
+  const ss=[...S.sessions.values()].sort((a,b)=>b.start-a.start);
+  const live=ss.filter(s=>!s.end);
+  main.innerHTML=`
+    ${live.length?`<div class="card"><h2>In progress</h2><div class="list">${live.map(sessRow).join('')}</div></div>`:''}
+    <div class="card"><h2>Sessions</h2>${ss.filter(s=>s.end).length?`<div class="list">${ss.filter(s=>s.end).map(sessRow).join('')}</div>`
+      :'<p class="empty">Finished sessions appear here, ready to export.</p>'}</div>
+    <a class="btn sec" href="#set">Lens profiles, storage and help</a>
+    <footer>Works with no signal. Everything stays on this phone until you export.</footer>`;
+  act(`<button class="btn" id="go">Start a session</button>`);
+  $('#go').onclick=newSession;
+}
+function sessRow(s){const n=missingAll(s.id),js=subjectsOf(s.id).length,xs=shotsOfSession(s.id).length;
+  return `<a href="#s=${s.id}" class="${s.end?'':'live'}"><div><b>${esc(s.id)} · ${esc((s.place||[])[0]||'place not set')}</b>
+    <u>${day(s.start)} ${hm(s.start)}${s.end?'–'+hm(s.end):' · in progress'} · ${js} subject${js===1?'':'s'}, ${xs} shot${xs===1?'':'s'}</u></div>${badge(n)}</a>`}
+
+function viewSession(id){
+  const r=S.sessions.get(id);
+  bar('',r.id,day(r.start)+' · '+hm(r.start)+(r.end?'–'+hm(r.end):' · in progress'),true);
+  const js=subjectsOf(id);
+  main.innerHTML=`<div id="form"></div>
+    <div class="card"><h2>Subjects</h2>${js.length?`<div class="list">${js.map(j=>{const xs=shotsOf(j.id);
+      return `<a href="#j=${j.id}">${j.photos?.[0]?`<img data-thumb="${j.photos[0]}" style="width:42px;height:42px;border-radius:8px;object-fit:cover">`:''}
+      <div><b>${esc(j.name||'(no name yet)')}</b><u>${hm(j.t)} · ${esc(j.kind||'kind not set')} · ${xs.length} shot${xs.length===1?'':'s'}</u></div>
+      ${badge(missing('subjects',j).length+xs.reduce((a,x)=>a+missing('shots',x).length,0))}</a>`}).join('')}</div>`
+      :'<p class="empty">Nothing found yet.</p>'}</div>
+    <div class="card"><h2>Finish</h2>
+      ${r.end?`<button class="btn sec" id="reopen">Reopen session</button>`:`<button class="btn sec" id="end">End session</button>`}
+      <button class="btn" id="exp">Export session (.xlsx + photos + voice)</button>
+      <button class="btn danger" id="del">Delete session</button></div>`;
+  CUR={store:'sessions',schema:SESSION,rec:r,el:$('#form')};renderForm();hydrate(main);
+  clockT=setInterval(()=>{const c=$('#clk');if(c) c.firstChild.textContent=hms(Date.now())},250);
+  act(`<button class="btn" id="go">+ New subject</button>`);$('#go').onclick=()=>newSubject(id);
+  $('#exp').onclick=()=>exportSession(id);
+  $('#del').onclick=async()=>{if(!confirm('Delete '+id+' with all its subjects, shots, photos and voice memos? This cannot be undone.')) return;
+    await deleteRecord('sessions',r);location.hash=''};
+  if($('#reopen')) $('#reopen').onclick=()=>{r.end=null;save('sessions',r);viewSession(id)};
+  if($('#end')) $('#end').onclick=()=>{
+    const n=missing('sessions',{...r,end:Date.now()}).length+missingAll(id)-missing('sessions',r).length;
+    if(n&&!confirm(n+' needed field'+(n===1?' is':'s are')+' still blank in this session. End it anyway? You can fill them in later.')) return;
+    r.end=Date.now();save('sessions',r);viewSession(id);scrollTo(0,0)};
+  if(r.gps&&!r.wxAuto) fetchWeather(r);
+}
+
+function viewSubject(id){
+  const r=S.subjects.get(id);
+  bar('s='+r.sessionId,'Subject '+id.split('-').pop(),r.sessionId+' · found '+hm(r.t),true);
+  const xs=shotsOf(id);
+  main.innerHTML=`<div id="form"></div>
+    <div class="card"><h2>Shots</h2>${xs.length?`<div class="list">${xs.map(shotRow).join('')}</div>`:'<p class="empty">No shots yet.</p>'}</div>
+    <p class="priv" style="text-align:center">${r.gps?'🔒 Position saved privately (±'+Math.round(r.gps.acc)+' m)':''}</p>
+    <button class="btn danger" id="del">Delete subject</button>`;
+  CUR={store:'subjects',schema:SUBJECT,rec:r,el:$('#form')};renderForm();
+  act(`<button class="btn" id="go">+ New shot</button>`);$('#go').onclick=()=>newShot(id);
+  $('#del').onclick=async()=>{if(!confirm('Delete this subject, its shots and photos?')) return;
+    await deleteRecord('subjects',r);location.hash='s='+r.sessionId};
+}
+function shotRow(x){
+  const files=x.fileFirst?(x.fileLast&&x.fileLast!==x.fileFirst?x.fileFirst+'–'+x.fileLast.slice(-4):x.fileFirst):'files not set';
+  return `<a href="#x=${x.id}"><div><b>${x.keeper?'★ ':''}${esc(files)}</b>
+    <u>${esc([x.lens,x.mag!=null?x.mag+'×':'',x.ap,x.focus===STACK?(x.frames||'?')+'-frame stack':''].filter(Boolean).join(' · ')||'lens not set')}</u></div>
+    ${badge(missing('shots',x).length)}</a>`}
+
+function viewShot(id){
+  const r=S.shots.get(id),j=S.subjects.get(r.subjectId);
+  bar('j='+r.subjectId,'Shot '+id.split('-').pop(),(j?.name||'Subject '+r.subjectId.split('-').pop())+' · '+hm(r.t),true);
+  main.innerHTML=`<div id="form"></div><button class="btn danger" id="del">Delete shot</button>`;
+  CUR={store:'shots',schema:SHOT,rec:r,el:$('#form')};renderForm();
+  act(`<button class="btn sec" id="done" style="flex:0 0 32%">Done</button><button class="btn" id="go">Next shot ›</button>`);
+  $('#go').onclick=()=>newShot(r.subjectId);
+  $('#done').onclick=()=>location.hash='j='+r.subjectId;
+  $('#del').onclick=async()=>{if(!confirm('Delete this shot?')) return;
+    await deleteRecord('shots',r);location.hash='j='+r.subjectId};
+}
+
+async function viewSettings(){
+  CUR=null;bar('','Settings and help');act('');
+  const p=KV.profiles,est=await navigator.storage?.estimate?.().catch(()=>null);
+  const kept=await navigator.storage?.persisted?.().catch(()=>false);
+  main.innerHTML=`
+    <div class="card"><h2>Lens profiles</h2>
+      <p class="hint" style="opacity:.75">${P.lenses.length} lenses, ${P.lights.length} lights and modifiers, ${P.supports.length} supports.
+      ${p?'Imported '+stamp(p.at)+(p.file?' from '+esc(p.file):''):'Built-in copy of NHW_Lens_Profiles.xlsx (28 Oct 2026).'}</p>
+      <div class="list">${P.lenses.map(l=>`<a><div><b>${esc(l.short)}</b><u>${esc(l.magRange)} · ${l.contacts?'camera records aperture':esc(l.stops[0]+'–'+l.stops.at(-1))} · ${esc(l.wd)}</u></div></a>`).join('')}</div>
+      <label class="btn file" style="margin-top:12px">Import NHW_Lens_Profiles.xlsx<input type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" id="imp"></label>
+      ${p?'<button class="btn sec" id="builtin">Go back to the built-in profiles</button>':''}
+      <p class="hint">Add or edit a row in the spreadsheet (Lenses, Lights, Supports, Camera tabs), then import it here. Shots already logged keep their lens names.</p></div>
+    <div class="card"><h2>Storage on this phone</h2>
+      <p class="hint" style="opacity:.75">${est?(est.usage/1048576).toFixed(1)+' MB used. ':''}${kept?'Protected: iOS will not clear it to free space.':'Not yet protected from iOS clean-up.'}</p>
+      ${kept?'':'<button class="btn sec" id="persist">Protect stored data</button>'}
+      <p class="note warn">Data lives inside this app. Removing the app from the home screen deletes it, so export each session when you get home.</p></div>
+    <div class="card"><h2>Typing or voice</h2>
+      <p class="hint" style="opacity:.8">Any text box: type, or tap the 🎤 on the iPhone keyboard and speak. On recent iPhones dictation works with no signal.
+      Session notes, subject notes and "why these settings" also have <b>● Record voice memo</b>, which keeps the audio itself; it is exported alongside the spreadsheet.</p></div>
+    <footer>NHW Field Log · exact GPS is never exported</footer>`;
+  $('#imp').onchange=async e=>{const f=e.target.files[0];if(!f) return;
+    try{const raw=await readXlsx(await f.arrayBuffer());const parsed=parseProfiles(raw);
+      if(!parsed.lenses.length) throw new Error('no lenses found');
+      await putKV('profiles',{raw,at:Date.now(),file:f.name});P=parsed;
+      toast('Imported '+parsed.lenses.length+' lenses');viewSettings()}
+    catch(err){toast('Import failed: '+err.message)}};
+  if($('#builtin')) $('#builtin').onclick=async()=>{await dbDel('kv','profiles');delete KV.profiles;
+    P=parseProfiles(DEFAULT_PROFILES);viewSettings()};
+  if($('#persist')) $('#persist').onclick=async()=>{const ok=await navigator.storage?.persist?.();
+    toast(ok?'Protected':'iOS declined. Adding the app to the home screen usually allows it.');viewSettings()};
+}
+
+function route(){
+  stopRec();clearInterval(clockT);flush();
+  const [k,v]=decodeURIComponent(location.hash.slice(1)).split('=');
+  if(k==='s'&&S.sessions.has(v)) viewSession(v);
+  else if(k==='j'&&S.subjects.has(v)) viewSubject(v);
+  else if(k==='x'&&S.shots.has(v)) viewShot(v);
+  else if(k==='set') viewSettings();
+  else viewHome();
+  scrollTo(0,0);
+}
+addEventListener('hashchange',route);
+
+/* ============ Zip and xlsx ============
+   Written here rather than pulled from a library so export works with no
+   signal and nothing extra to cache. The writer stores entries uncompressed,
+   which every spreadsheet program accepts; the reader inflates with the
+   browser's own DecompressionStream. */
+const CRC=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;
+  for(let k=0;k<8;k++) c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0}return t})();
+function crc32(b){let c=~0;for(let i=0;i<b.length;i++) c=CRC[(c^b[i])&255]^(c>>>8);return ~c>>>0}
+function makeZip(files){
+  const enc=new TextEncoder(),parts=[],central=[],d=new Date();let off=0;
+  const dt=(d.getFullYear()-1980)<<9|(d.getMonth()+1)<<5|d.getDate(),tm=d.getHours()<<11|d.getMinutes()<<5|d.getSeconds()>>1;
+  for(const f of files){
+    const nm=enc.encode(f.name),data=typeof f.data==='string'?enc.encode(f.data):f.data,crc=crc32(data),sz=data.length;
+    const h=new DataView(new ArrayBuffer(30));
+    h.setUint32(0,0x04034b50,true);h.setUint16(4,20,true);h.setUint16(6,0x0800,true);
+    h.setUint16(10,tm,true);h.setUint16(12,dt,true);h.setUint32(14,crc,true);
+    h.setUint32(18,sz,true);h.setUint32(22,sz,true);h.setUint16(26,nm.length,true);
+    parts.push(new Uint8Array(h.buffer),nm,data);
+    const c=new DataView(new ArrayBuffer(46));
+    c.setUint32(0,0x02014b50,true);c.setUint16(4,20,true);c.setUint16(6,20,true);c.setUint16(8,0x0800,true);
+    c.setUint16(12,tm,true);c.setUint16(14,dt,true);c.setUint32(16,crc,true);c.setUint32(20,sz,true);
+    c.setUint32(24,sz,true);c.setUint16(28,nm.length,true);c.setUint32(42,off,true);
+    central.push(new Uint8Array(c.buffer),nm);
+    off+=30+nm.length+sz;
+  }
+  const cd=central.reduce((a,b)=>a+b.length,0),e=new DataView(new ArrayBuffer(22));
+  e.setUint32(0,0x06054b50,true);e.setUint16(8,files.length,true);e.setUint16(10,files.length,true);
+  e.setUint32(12,cd,true);e.setUint32(16,off,true);
+  return new Blob([...parts,...central,new Uint8Array(e.buffer)],{type:'application/zip'});
+}
+async function readZip(buf){
+  const u=new Uint8Array(buf),dv=new DataView(buf),out={};
+  let e=u.length-22;while(e>=0&&dv.getUint32(e,true)!==0x06054b50) e--;
+  if(e<0) throw new Error('not an .xlsx file');
+  let p=dv.getUint32(e+16,true);
+  for(let i=0,n=dv.getUint16(e+10,true);i<n;i++){
+    const nl=dv.getUint16(p+28,true),lo=dv.getUint32(p+42,true);
+    const start=lo+30+dv.getUint16(lo+26,true)+dv.getUint16(lo+28,true);
+    out[new TextDecoder().decode(u.subarray(p+46,p+46+nl))]={m:dv.getUint16(p+10,true),d:u.subarray(start,start+dv.getUint32(p+20,true))};
+    p+=46+nl+dv.getUint16(p+30,true)+dv.getUint16(p+32,true);
+  }
+  return async name=>{const f=out[name];if(!f) return null;let b=f.d;
+    if(f.m===8) b=new Uint8Array(await new Response(new Blob([b]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer());
+    return new TextDecoder().decode(b)};
+}
+const colName=i=>{let s='';for(i++;i;i=Math.floor((i-1)/26)) s=String.fromCharCode(65+(i-1)%26)+s;return s};
+const colIdx=ref=>{let n=0;for(const ch of ref.replace(/\d+$/,'')) n=n*26+ch.charCodeAt(0)-64;return n-1};
+async function readXlsx(buf){
+  const text=await readZip(buf),X=s=>new DOMParser().parseFromString(s,'application/xml');
+  const wbT=await text('xl/workbook.xml');if(!wbT) throw new Error('not an .xlsx file');
+  const rels={};for(const r of X(await text('xl/_rels/workbook.xml.rels')).getElementsByTagName('Relationship'))
+    rels[r.getAttribute('Id')]=r.getAttribute('Target');
+  const ssT=await text('xl/sharedStrings.xml');
+  const ss=ssT?[...X(ssT).getElementsByTagName('si')].map(si=>[...si.getElementsByTagName('t')].map(t=>t.textContent).join('')):[];
+  const out={};
+  for(const sh of X(wbT).getElementsByTagName('sheet')){
+    let t=rels[sh.getAttribute('r:id')];if(!t) continue;
+    t=t.startsWith('/')?t.slice(1):'xl/'+t;
+    const rows=[];
+    for(const row of X(await text(t)).getElementsByTagName('row')){
+      const a=[];
+      for(const c of row.getElementsByTagName('c')){
+        const ty=c.getAttribute('t'),v=c.getElementsByTagName('v')[0]?.textContent;
+        a[colIdx(c.getAttribute('r'))]=ty==='s'?ss[+v]:ty==='inlineStr'?[...c.getElementsByTagName('t')].map(x=>x.textContent).join(''):v??'';
+      }
+      if(a.some(x=>x!=null&&x!=='')) rows.push(Array.from(a,x=>x??''));
+    }
+    out[sh.getAttribute('name')]=rows;
+  }
+  return out;
+}
+const xe=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])).replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g,'');
+function sheetXML(rows){
+  const w=[];rows.forEach(r=>r.forEach((v,i)=>{w[i]=Math.min(60,Math.max(w[i]||8,String(v??'').length+2))}));
+  const data=rows.map((r,ri)=>`<row r="${ri+1}">`+r.map((v,ci)=>{
+    if(v==null||v==='') return '';const ref=colName(ci)+(ri+1),s=ri===0?' s="1"':' s="2"';
+    return typeof v==='number'&&isFinite(v)?`<c r="${ref}"${s}><v>${v}</v></c>`
+      :`<c r="${ref}" t="inlineStr"${s}><is><t xml:space="preserve">${xe(v)}</t></is></c>`}).join('')+'</row>').join('');
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">`+
+    `<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>`+
+    `<cols>${w.map((x,i)=>`<col min="${i+1}" max="${i+1}" width="${x}" customWidth="1"/>`).join('')}</cols><sheetData>${data}</sheetData></worksheet>`;
+}
+async function makeXlsx(sheets){
+  const M='http://schemas.openxmlformats.org/',n=sheets.length;
+  const files=[
+    {name:'[Content_Types].xml',data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="${M}package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>${sheets.map((_,i)=>`<Override PartName="/xl/worksheets/sheet${i+1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('')}</Types>`},
+    {name:'_rels/.rels',data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="${M}package/2006/relationships"><Relationship Id="rId1" Type="${M}officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`},
+    {name:'xl/workbook.xml',data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="${M}spreadsheetml/2006/main" xmlns:r="${M}officeDocument/2006/relationships"><sheets>${sheets.map((s,i)=>`<sheet name="${xe(s.name)}" sheetId="${i+1}" r:id="rId${i+1}"/>`).join('')}</sheets></workbook>`},
+    {name:'xl/_rels/workbook.xml.rels',data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="${M}package/2006/relationships">${sheets.map((_,i)=>`<Relationship Id="rId${i+1}" Type="${M}officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i+1}.xml"/>`).join('')}<Relationship Id="rId${n+1}" Type="${M}officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`},
+    {name:'xl/styles.xml',data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="${M}spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="3"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`},
+    ...sheets.map((s,i)=>({name:`xl/worksheets/sheet${i+1}.xml`,data:sheetXML(s.rows)}))];
+  return new Uint8Array(await makeZip(files).arrayBuffer());
+}
+
+/* ============ Export ============
+   One zip per session: the workbook plus the phone ID photos and voice memos,
+   named by session, subject and shot IDs. The exact GPS is never written. */
+const extOf=t=>({'image/jpeg':'jpg','image/png':'png','image/heic':'heic','image/heif':'heif','image/webp':'webp',
+  'audio/mp4':'m4a','audio/x-m4a':'m4a','audio/aac':'aac','audio/webm':'webm','audio/mpeg':'mp3','audio/wav':'wav'})[t]||'bin';
+/* A field the form is hiding (stack settings on a single frame, fungus
+   features after the kind changed to spider) exports blank, not stale. */
+const xcell=(schema,f,r)=>{if(!f.xAll&&!shown(schema,f,r)) return '';if(f.xv) return f.xv(r);const v=r[f.k];
+  return Array.isArray(v)?v.join('; '):typeof v==='boolean'?(v?'Yes':''):v??''};
+const xcols=schema=>schema.filter(f=>f.k&&f.t!=='html'&&!f.noX).map(f=>[f.xl||(typeof f.l==='string'?f.l:f.k[0].toUpperCase()+f.k.slice(1)),r=>xcell(schema,f,r)]);
+
+async function exportSession(sid){
+  flush();
+  const s=S.sessions.get(sid),js=subjectsOf(sid),xs=shotsOfSession(sid);
+  toast('Building the export…');
+  const media=[];
+  const attach=async(r,ids,stem)=>{const names=[];let i=0;
+    for(const id of ids||[]){const b=await getBlob(id);if(!b) continue;
+      const nm=`${stem}_${++i}.${extOf(b.type)}`;media.push({name:nm,data:new Uint8Array(b.buf)});names.push(nm)}
+    return names.join('; ')};
+  const audioCols=async(r,schema)=>{const o={};
+    for(const f of schema.filter(f=>f.voice)) o[f.k]=await attach(r,(r.audio||{})[f.k],`voice/${r.id}_${f.k}`);return o};
+
+  const sv=await audioCols(s,SESSION);
+  const sessionRows=[['Field','Value'],['Session ID',s.id],['Date',day(s.start)],['Start',hms(s.start)],['End',s.end?hms(s.end):''],
+    ...xcols(SESSION).map(([l,g])=>[l,g(s)]),
+    ['Session voice memos',sv.notes],
+    ['Weather source',s.wxAuto?'Open-Meteo, hour starting '+s.wxAuto.hour.replace('T',' ')+'; blank fields filled, entries kept':'Entered by hand'],
+    ['Subjects',js.length],['Shots',xs.length],
+    ['Exact location','Kept on the phone only; not exported']];
+
+  const jc=xcols(SUBJECT),subjRows=[['Session ID','Subject ID','Time found','Phone ID photos',...jc.map(c=>c[0]),'Voice memos','Shots']];
+  for(const j of js){const ph=await attach(j,j.photos,`photos/${j.id}`),v=await audioCols(j,SUBJECT);
+    subjRows.push([sid,j.id,stamp(j.t),ph,...jc.map(c=>c[1](j)),v.notes,shotsOf(j.id).length])}
+
+  const xc=xcols(SHOT),shotRows=[['Session ID','Subject ID','Subject name','Shot ID','Time',...xc.map(c=>c[0]),
+    'Light source type','Lens short name','Mount / adapter','Camera records lens data','Focal length (mm)','Working distance',
+    'Focus method (lens)','Why: voice memos','How it was made (lens line)']];
+  for(const x of xs){const L=lensOf(x),v=await audioCols(x,SHOT);
+    shotRows.push([sid,x.subjectId,S.subjects.get(x.subjectId)?.name||'',x.id,stamp(x.t),...xc.map(c=>c[1](x)),
+      lightCategory(x.light),x.lens||'',L?.mount||'',L?(L.contacts?'Yes':'No'):'',
+      L&&!isNaN(+L.focal)?+L.focal:L?.focal||'',L?.wd||'',L?.focus||'',v.why,L?.book||''])}
+
+  const xlsx=await makeXlsx([{name:'Session',rows:sessionRows},{name:'Subjects',rows:subjRows},{name:'Shots',rows:shotRows}]);
+  const zip=makeZip([{name:`${sid}.xlsx`,data:xlsx},...media]);
+  const file=new File([zip],`${sid}.zip`,{type:'application/zip'});
+  if(navigator.canShare&&navigator.canShare({files:[file]})){
+    try{await navigator.share({files:[file],title:sid});return}catch(e){if(e.name==='AbortError') return}}
+  const a=document.createElement('a');a.href=URL.createObjectURL(file);a.download=file.name;
+  document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),60000);
+}
+
+/* ============ Start ============ */
+(async()=>{
+  try{DB=await openDB()}catch(e){main.innerHTML='<p class="note warn">This browser will not let the app store data: '+esc(e.message)+'</p>';return}
+  const [ss,js,xs,kv]=await Promise.all(['sessions','subjects','shots','kv'].map(dbAll));
+  ss.forEach(r=>S.sessions.set(r.id,r));js.forEach(r=>S.subjects.set(r.id,r));xs.forEach(r=>S.shots.set(r.id,r));
+  kv.forEach(r=>KV[r.id]=r.data);
+  try{P=parseProfiles(KV.profiles?.raw||DEFAULT_PROFILES)}catch(e){P=parseProfiles(DEFAULT_PROFILES)}
+  for(const s of S.sessions.values()) s._wxBusy=false;
+  route();retryWeather();
+  navigator.storage?.persist?.().catch(()=>{});
+})();
+if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>
